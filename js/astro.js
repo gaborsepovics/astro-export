@@ -80,11 +80,16 @@
   // orb (degrees); an extra LUMINARY_BONUS is added when the Sun or Moon is one
   // of the two bodies — reproducing the wider orbs AstroSeek uses by default.
   var ASPECTS = [
-    { key: 'conjunction', en: 'Conjunction', hu: 'Együttállás',  glyph: '☌', angle: 0,   orb: 8, major: true },
-    { key: 'opposition',  en: 'Opposition',  hu: 'Szembenállás', glyph: '☍', angle: 180, orb: 8, major: true },
-    { key: 'trine',       en: 'Trine',       hu: 'Trigon',       glyph: '△', angle: 120, orb: 8, major: true },
-    { key: 'square',      en: 'Square',      hu: 'Kvadrát',      glyph: '□', angle: 90,  orb: 7, major: true },
-    { key: 'sextile',     en: 'Sextile',     hu: 'Szextil',      glyph: '⚹', angle: 60,  orb: 6, major: true }
+    { key: 'conjunction',   en: 'Conjunction',   hu: 'Együttállás',   glyph: '☌', angle: 0,   orb: 8, major: true },
+    { key: 'opposition',    en: 'Opposition',    hu: 'Szembenállás',  glyph: '☍', angle: 180, orb: 8, major: true },
+    { key: 'trine',         en: 'Trine',         hu: 'Trigon',        glyph: '△', angle: 120, orb: 8, major: true },
+    { key: 'square',        en: 'Square',        hu: 'Kvadrát',       glyph: '□', angle: 90,  orb: 7, major: true },
+    { key: 'sextile',       en: 'Sextile',       hu: 'Szextil',       glyph: '⚹', angle: 60,  orb: 6, major: true },
+    // Minor aspects — available in the advanced panel, off by default.
+    { key: 'quincunx',      en: 'Quincunx',      hu: 'Kvinkunx',      glyph: '⚻', angle: 150, orb: 3, major: false },
+    { key: 'semisextile',   en: 'Semisextile',   hu: 'Félszextil',    glyph: '⚺', angle: 30,  orb: 2, major: false },
+    { key: 'semisquare',    en: 'Semisquare',    hu: 'Félkvadrát',    glyph: '∠', angle: 45,  orb: 2, major: false },
+    { key: 'sesquiquadrate',en: 'Sesquiquadrate',hu: 'Másfélkvadrát', glyph: '⚼', angle: 135, orb: 2, major: false }
   ];
   var LUMINARY_BONUS = 2; // extra orb (deg) when the Sun or Moon is involved
   function isLuminary(key) { return key === 'Sun' || key === 'Moon'; }
