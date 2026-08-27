@@ -1,0 +1,16 @@
+{
+  "name": "Astro Export",
+  "short_name": "Astro Export",
+  "description": "Birth, transit, progression and solar-arc astrology data export for pasting into an LLM.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1022",
+  "theme_color": "#4636cf",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

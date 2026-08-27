@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#4636cf">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Astro Export">
+  <title>Astro Export</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <h1><span class="glyph">✷</span> <span data-i18n="appTitle">Astro Export</span></h1>
+      <div class="lang-toggle" id="langToggle">
+        <button data-lang="hu" class="active">HU</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </header>
+
+    <!-- People -->
+    <section class="card">
+      <h2 data-i18n="peopleTitle">Személyek</h2>
+      <div class="people-row" id="peopleRow"></div>
+      <div id="personSummary" style="margin-top:12px;"></div>
+    </section>
+
+    <!-- Target date -->
+    <section class="card">
+      <h2 data-i18n="targetTitle">Cél időpont</h2>
+      <div class="target-display">
+        <div class="big" id="targetBig">—</div>
+        <div class="sub" id="targetSub"></div>
+      </div>
+
+      <div class="segment" id="granularity">
+        <button data-unit="minute" data-i18n="gMinute">Perc</button>
+        <button data-unit="hour" class="active" data-i18n="gHour">Óra</button>
+        <button data-unit="day" data-i18n="gDay">Nap</button>
+        <button data-unit="month" data-i18n="gMonth">Hónap</button>
+        <button data-unit="year" data-i18n="gYear">Év</button>
+      </div>
+
+      <div class="wheel" id="wheel">
+        <button class="wheel-arrow" id="wheelPrev" aria-label="prev">‹</button>
+        <div class="wheel-window">
+          <div class="wheel-frame"></div>
+          <div class="wheel-strip" id="wheelStrip"></div>
+        </div>
+        <button class="wheel-arrow" id="wheelNext" aria-label="next">›</button>
+      </div>
+
+      <div class="preset-grid" id="presetRow"></div>
+
+      <div class="field" style="margin-top:14px;">
+        <label data-i18n="manualDate">Pontos időpont (helyi idő)</label>
+        <input type="datetime-local" id="manualTarget">
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="card">
+      <h2 data-i18n="settingsTitle">Beállítások</h2>
+      <div class="field">
+        <label data-i18n="houseSystem">Házrendszer</label>
+        <select id="houseSystem"></select>
+      </div>
+
+      <div class="toggles" id="includeToggles"></div>
+
+      <details class="adv">
+        <summary data-i18n="advanced">Haladó: aspektusok és orbok</summary>
+        <div class="field" style="margin-top:12px;">
+          <label data-i18n="aspects">Aspektusok</label>
+          <div class="asp-table" id="aspectChips"></div>
+        </div>
+        <div class="hint" data-i18n="orbHint">Az orbok az egyes aspektusoknál alapértelmezettek; a fentiek ki/be kapcsolhatók.</div>
+      </details>
+    </section>
+
+    <!-- Ask an AI -->
+    <section class="card">
+      <h2 data-i18n="askTitle">Kérdés egy AI-nak</h2>
+      <div class="field">
+        <textarea id="aiQuestion" rows="3" data-i18n-ph="askPlaceholder"
+          placeholder="Írd ide a kérdésed… (az adat-export automatikusan hozzáfűződik)"></textarea>
+      </div>
+      <div class="ai-grid">
+        <a class="ai-btn" data-ai="chatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>
+        <a class="ai-btn" data-ai="gemini" href="https://gemini.google.com/app" target="_blank" rel="noopener">Gemini</a>
+        <a class="ai-btn" data-ai="claude" href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a>
+        <a class="ai-btn" data-ai="perplexity" href="https://www.perplexity.ai/" target="_blank" rel="noopener">Perplexity</a>
+      </div>
+      <div class="hint" data-i18n="askHint">A gomb a promptot (kérdés + adat-export) a vágólapra másolja és megnyitja az AI-t — csak illeszd be (Ctrl/⌘+V, vagy hosszú koppintás → Beillesztés).</div>
+    </section>
+
+    <!-- Output -->
+    <section class="card" id="outputCard" style="display:none;">
+      <h2 data-i18n="outputTitle">Adat-export</h2>
+      <div class="output-wrap">
+        <pre class="output" id="output"></pre>
+      </div>
+      <div class="copy-float">
+        <button class="btn primary block" id="copyBtn" data-i18n="copy">Másolás</button>
+        <button class="btn ghost" id="shareBtn" data-i18n="share">Megosztás</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="generate-bar">
+    <div class="inner">
+      <button class="btn primary block" id="generateBtn" data-i18n="generate">Export generálása</button>
+    </div>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div class="toast" id="toast"></div>
+
+  <script src="js/astronomy.browser.min.js"></script>
+  <script src="js/cities.js"></script>
+  <script src="js/chiron.js"></script>
+  <script src="js/astro.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
