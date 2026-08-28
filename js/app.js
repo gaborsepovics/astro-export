@@ -41,7 +41,8 @@
       chartTitle: 'Natál chart-kör', chartNeed: 'Adj meg születési adatokat (dátum, hely) a chart-kör megjelenítéséhez.',
       legHarm: 'harmonikus', legTense: 'feszült', legConj: 'együttállás', legMinor: 'minor',
       cwNatal: 'Natál', cwTransit: 'Natál + Tranzit', cwTransitCap: 'Tranzit',
-      cwAspNatal: 'Aspektusok: natál–natál', cwAspTransit: 'Aspektusok: tranzit → natál (külső gyűrű = tranzit)'
+      cwAspNatal: 'Aspektusok: natál–natál', cwAspTransit: 'Aspektusok: tranzit → natál (külső gyűrű = tranzit)',
+      cwRotHint: 'Forgasd a kört a tranzit idő állításához (a lépték a Cél időpontnál választható)'
     },
     en: {
       appTitle: 'Astro Export', peopleTitle: 'People', targetTitle: 'Target time',
@@ -73,7 +74,8 @@
       chartTitle: 'Natal chart wheel', chartNeed: 'Add birth data (date, place) to see the chart wheel.',
       legHarm: 'harmonious', legTense: 'tense', legConj: 'conjunction', legMinor: 'minor',
       cwNatal: 'Natal', cwTransit: 'Natal + Transit', cwTransitCap: 'Transit',
-      cwAspNatal: 'Aspects: natal–natal', cwAspTransit: 'Aspects: transit → natal (outer ring = transit)'
+      cwAspNatal: 'Aspects: natal–natal', cwAspTransit: 'Aspects: transit → natal (outer ring = transit)',
+      cwRotHint: 'Rotate the wheel to scrub the transit time (step set under Target time)'
     }
   };
   function t(k) { return (I18N[state.settings.lang] || I18N.hu)[k] || k; }
@@ -657,6 +659,13 @@
       var q = pt(lon, r);
       return '<text class="' + cls + '" x="' + q[0].toFixed(2) + '" y="' + q[1].toFixed(2) + '">' + str + '</text>';
     }
+    function xy(lon, r) { var q = pt(lon, r); return q[0].toFixed(2) + ' ' + q[1].toFixed(2); }
+    function circle(r, cls) { return '<circle class="' + cls + '" cx="170" cy="170" r="' + r + '"/>'; }
+    // A filled band sector spanning [lon0, lon1] between two radii.
+    function sector(lon0, lon1, rOut, rIn, cls) {
+      return '<path class="' + cls + '" d="M ' + xy(lon0, rOut) + ' A ' + rOut + ' ' + rOut + ' 0 0 0 ' +
+        xy(lon1, rOut) + ' L ' + xy(lon1, rIn) + ' A ' + rIn + ' ' + rIn + ' 0 0 1 ' + xy(lon0, rIn) + ' Z"/>';
+    }
 
     var R_out = 166;
     var R_zin = bi ? 150 : 140;       // zodiac inner edge
@@ -672,12 +681,23 @@
       : { rGlyph: 125, rDeg: 114, rTickA: 140, rTickB: 132, minGap: 8, cls: 'cw-planet', degCls: 'cw-pdeg' };
     var transCfg = { rGlyph: 139, rDeg: 129, rTickA: 150, rTickB: 145, minGap: 8, cls: 'cw-planet cw-planet-t', degCls: 'cw-pdeg cw-pdeg-t' };
 
+    var els = ['fire', 'earth', 'air', 'water'];
     var s = [];
-    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_out + '"/>');
-    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_zin + '"/>');
-    if (bi) s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_cuspOut + '"/>');
-    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_cuspIn + '"/>');
-    s.push('<circle class="cw-ring cw-hub" cx="170" cy="170" r="' + R_hub + '"/>');
+
+    // Zodiac band: each sign faintly tinted by its element for a rich ring.
+    for (var i = 0; i < 12; i++) {
+      s.push(sector(i * 30, i * 30 + 30, R_out, R_zin, 'cw-sect cw-sect-' + els[i % 4]));
+    }
+    // Faint disc behind the aspect hub so the lines read on a calm ground.
+    s.push(circle(R_hub, 'cw-hubfill'));
+
+    s.push(circle(R_out, 'cw-ring'));
+    s.push(circle(R_zin, 'cw-ring'));
+    if (bi) s.push(circle(R_cuspOut, 'cw-ring'));
+    s.push(circle(R_cuspIn, 'cw-ring'));
+    s.push(circle(R_hub, 'cw-ring cw-hub'));
+    // A dashed "grip" ring in transit mode signals the wheel is rotatable.
+    if (bi) s.push(circle(R_out + 4, 'cw-grip'));
 
     // Degree ticks every 5°, longer on the tens (shorter in bi-wheel to leave
     // room for the transit ring).
@@ -686,11 +706,10 @@
       s.push(line(dg, R_zin, dg, R_zin - tl, 'cw-tick'));
     }
 
-    // Zodiac sign sectors: divider every 30° + a glyph, tinted by element.
-    var els = ['fire', 'earth', 'air', 'water'];
-    for (var i = 0; i < 12; i++) {
-      s.push(line(i * 30, R_zin, i * 30, R_out, 'cw-signdiv'));
-      s.push(txt(i * 30 + 15, R_sign, 'cw-sign cw-' + els[i % 4], A.SIGNS[i].glyph));
+    // Sign dividers + element-tinted glyphs.
+    for (var i2 = 0; i2 < 12; i2++) {
+      s.push(line(i2 * 30, R_zin, i2 * 30, R_out, 'cw-signdiv'));
+      s.push(txt(i2 * 30 + 15, R_sign, 'cw-sign cw-' + els[i2 % 4], A.SIGNS[i2].glyph));
     }
 
     // House cusps; the four angles drawn bolder with AC/DC/MC/IC labels.
@@ -726,6 +745,9 @@
           s.push(line(it.lon, cfg.rTickB, it.disp, cfg.rGlyph + 6, 'cw-pconn'));
         }
         var noRetro = it.key === 'NorthNode' || it.key === 'Lilith';
+        var gp = pt(it.disp, cfg.rGlyph);
+        var chipT = cfg.cls.indexOf('cw-planet-t') >= 0 ? ' cw-pchip-t' : '';
+        s.push('<circle class="cw-pchip' + chipT + '" cx="' + gp[0].toFixed(2) + '" cy="' + gp[1].toFixed(2) + '" r="9"/>');
         s.push(txt(it.disp, cfg.rGlyph, cfg.cls, it.glyph));
         var dd = A.dms(it.lon);
         s.push(txt(it.disp, cfg.rDeg, cfg.degCls, pad2n(dd.deg) + '°' + (it.retro && !noRetro ? '<tspan class="cw-r"> ℞</tspan>' : '')));
@@ -796,8 +818,53 @@
       '<span class="cw-lg"><i class="cw-a-conj"></i>' + t('legConj') + '</span>' +
       '<span class="cw-lg"><i class="cw-a-minor"></i>' + t('legMinor') + '</span>' +
       '</div>';
-    host.innerHTML = buildWheelSVG(sc.chart, transit) + legend + aspNote +
+    host.classList.toggle('cw-rotatable', !!transit);
+    var hint = transit ? '<div class="cw-rothint">↻ ' + t('cwRotHint') + '</div>' : '';
+    host.innerHTML = buildWheelSVG(sc.chart, transit) + hint + legend + aspNote +
       '<div class="cw-caption">' + cap + '</div>' + cap2;
+  }
+
+  // Rotating the wheel scrubs the transit time: one full turn advances by a
+  // natural amount for the current granularity (clockwise = forward).
+  var CW_FULL_TURN = {
+    minute: 60 * 60000, hour: 24 * 3600000, day: 30 * 86400000,
+    month: 365.25 * 86400000, year: 12 * 365.25 * 86400000
+  };
+  function setupChartDrag() {
+    var host = $('chartWheel');
+    if (!host) return;
+    var cxS = 0, cyS = 0, last = 0, dragging = false;
+    function ang(e) { return Math.atan2(e.clientY - cyS, e.clientX - cxS); }
+    host.addEventListener('pointerdown', function (e) {
+      if (state.settings.wheelMode !== 'transit') return;
+      var svg = host.querySelector('svg'); if (!svg) return;
+      var r = svg.getBoundingClientRect();
+      cxS = r.left + r.width / 2; cyS = r.top + r.height / 2;
+      var dist = Math.hypot(e.clientX - cxS, e.clientY - cyS);
+      if (dist > r.width / 2) return;              // ignore taps outside the disc
+      dragging = true; last = ang(e);
+      host.classList.add('cw-dragging');
+      try { host.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+    });
+    host.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var a = ang(e), d = a - last;
+      if (d > Math.PI) d -= 2 * Math.PI; else if (d < -Math.PI) d += 2 * Math.PI;
+      last = a;
+      var full = CW_FULL_TURN[state.targetUnit] || CW_FULL_TURN.hour;
+      state.targetMs += (d * 180 / Math.PI) / 360 * full;   // clockwise → forward
+      renderTargetNumber();                                  // updates readout + schedules the transit redraw
+      e.preventDefault();
+    });
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      host.classList.remove('cw-dragging');
+      saveState(); renderTarget();   // recentre the date picker on the new value
+    }
+    host.addEventListener('pointerup', end);
+    host.addEventListener('pointercancel', end);
   }
 
   // Short local-time label for the transit target (e.g. "2026. aug. 28. 14:30").
@@ -912,6 +979,7 @@
     if (!state.targetMs) state.targetMs = Date.now();
     renderTarget();
     setupWheel();
+    setupChartDrag();
 
     document.querySelectorAll('#langToggle button').forEach(function (b) {
       b.addEventListener('click', function () {
