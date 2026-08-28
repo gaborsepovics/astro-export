@@ -641,54 +641,45 @@
   var WHEEL_PKEYS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
     'Uranus', 'Neptune', 'Pluto', 'NorthNode', 'Chiron', 'Lilith'];
 
-  // A small, detailed "blue marble" for the centre of the wheel — pure SVG
-  // (no emoji, no external image). Africa-facing view, authored in a radius-50
-  // space and scaled: ocean gradient, continents, soft clouds, sphere shading,
-  // a specular highlight and an atmospheric halo.
+  // An engraved, duotone terrestrial globe for the centre of the wheel — drawn
+  // in the accent colour to match the almanac aesthetic (no cartoon marble, no
+  // emoji, no external image): a graticule sphere with faint continent
+  // silhouettes and subtle sphere shading. Authored in a radius-50 space.
   function earthMarkup(cx, cy, r) {
-    var g = 'translate(' + cx + ',' + cy + ') scale(' + (r / 50).toFixed(4) + ')';
+    var gsc = 'translate(' + cx + ',' + cy + ') scale(' + (r / 50).toFixed(4) + ')';
     var land =
-      // Africa
-      '<path d="M -2,-22 C 8,-25 15,-16 12,-6 C 17,2 14,14 6,20 C 2,27 -6,28 -8,20 C -13,14 -11,3 -9,-4 C -13,-11 -10,-18 -2,-22 Z"/>' +
-      // Europe
-      '<path d="M -12,-25 C -6,-28 -1,-25 -4,-20 C -9,-18 -15,-21 -12,-25 Z"/>' +
-      // Arabia / Middle East
-      '<path d="M 13,-9 C 19,-12 24,-6 19,-1 C 15,1 11,-4 13,-9 Z"/>' +
-      // Asia
-      '<path d="M 15,-27 C 31,-32 42,-22 34,-13 C 27,-10 20,-17 15,-19 C 12,-23 11,-25 15,-27 Z"/>' +
-      // Madagascar
-      '<path d="M 12,14 C 15,13 16,17 14,20 C 12,21 10,18 12,14 Z"/>' +
-      // South America (limb, lower-left)
-      '<path d="M -32,4 C -26,0 -21,9 -25,17 C -28,25 -34,27 -36,19 C -37,13 -36,7 -32,4 Z"/>';
-    var clouds =
-      '<path d="M -23,-9 C -12,-14 1,-9 -6,-4 C -15,-1 -25,-3 -23,-9 Z"/>' +
-      '<path d="M 6,11 C 17,6 27,12 18,17 C 9,20 1,15 6,11 Z"/>' +
-      '<path d="M -5,-19 C 4,-22 13,-18 6,-14 C -1,-13 -9,-16 -5,-19 Z"/>';
+      '<path d="M -2,-22 C 8,-25 15,-16 12,-6 C 17,2 14,14 6,20 C 2,27 -6,28 -8,20 C -13,14 -11,3 -9,-4 C -13,-11 -10,-18 -2,-22 Z"/>' + // Africa
+      '<path d="M -12,-25 C -6,-28 -1,-25 -4,-20 C -9,-18 -15,-21 -12,-25 Z"/>' +                                                        // Europe
+      '<path d="M 13,-9 C 19,-12 24,-6 19,-1 C 15,1 11,-4 13,-9 Z"/>' +                                                                  // Arabia
+      '<path d="M 15,-27 C 31,-32 42,-22 34,-13 C 27,-10 20,-17 15,-19 C 12,-23 11,-25 15,-27 Z"/>' +                                    // Asia
+      '<path d="M 12,14 C 15,13 16,17 14,20 C 12,21 10,18 12,14 Z"/>' +                                                                  // Madagascar
+      '<path d="M -32,4 C -26,0 -21,9 -25,17 C -28,25 -34,27 -36,19 C -37,13 -36,7 -32,4 Z"/>';                                          // S. America (limb)
+    // Graticule: meridian ellipses + central meridian, and parallels as chords.
+    var grat = '<ellipse class="cw-grat" cx="0" cy="0" rx="17" ry="50"/>' +
+      '<ellipse class="cw-grat" cx="0" cy="0" rx="34" ry="50"/>' +
+      '<line class="cw-grat" x1="0" y1="-50" x2="0" y2="50"/>';
+    [-33, -17, 0, 17, 33].forEach(function (y) {
+      var hw = Math.sqrt(2500 - y * y).toFixed(1);
+      grat += '<line class="cw-grat" x1="-' + hw + '" y1="' + y + '" x2="' + hw + '" y2="' + y + '"/>';
+    });
     return '<defs>' +
-        '<radialGradient id="cwOcean" cx="40%" cy="34%" r="72%">' +
-          '<stop offset="0%" stop-color="#7cc0ee"/>' +
-          '<stop offset="38%" stop-color="#2f7fc9"/>' +
-          '<stop offset="100%" stop-color="#072142"/>' +
+        '<radialGradient id="cwSheen" cx="33%" cy="28%" r="72%">' +
+          '<stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>' +
+          '<stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>' +
         '</radialGradient>' +
-        '<radialGradient id="cwShade" cx="34%" cy="30%" r="80%">' +
-          '<stop offset="60%" stop-color="rgba(0,12,30,0)"/>' +
-          '<stop offset="100%" stop-color="rgba(0,12,30,0.6)"/>' +
-        '</radialGradient>' +
-        '<radialGradient id="cwAtmo" cx="50%" cy="50%" r="50%">' +
-          '<stop offset="66%" stop-color="rgba(150,205,255,0)"/>' +
-          '<stop offset="90%" stop-color="rgba(150,205,255,0.45)"/>' +
-          '<stop offset="100%" stop-color="rgba(150,205,255,0)"/>' +
+        '<radialGradient id="cwShade" cx="33%" cy="28%" r="84%">' +
+          '<stop offset="60%" stop-color="rgba(8,10,34,0)"/>' +
+          '<stop offset="100%" stop-color="rgba(8,10,34,0.42)"/>' +
         '</radialGradient>' +
         '<clipPath id="cwGlobe"><circle cx="0" cy="0" r="50"/></clipPath>' +
       '</defs>' +
-      '<g transform="' + g + '">' +
-        '<circle cx="0" cy="0" r="60" fill="url(#cwAtmo)"/>' +
-        '<circle cx="0" cy="0" r="50" fill="url(#cwOcean)"/>' +
+      '<g transform="' + gsc + '">' +
+        '<circle cx="0" cy="0" r="50" class="cw-globe-base"/>' +
         '<g clip-path="url(#cwGlobe)">' +
-          '<g class="cw-land">' + land + '</g>' +
-          '<g class="cw-cloud">' + clouds + '</g>' +
+          '<g class="cw-globe-land">' + land + '</g>' +
+          '<g>' + grat + '</g>' +
           '<circle cx="0" cy="0" r="50" fill="url(#cwShade)"/>' +
-          '<ellipse cx="-18" cy="-19" rx="15" ry="9" fill="#ffffff" opacity="0.22" transform="rotate(-35 -18 -19)"/>' +
+          '<circle cx="0" cy="0" r="50" fill="url(#cwSheen)"/>' +
         '</g>' +
         '<circle cx="0" cy="0" r="50" fill="none" class="cw-globe-rim"/>' +
       '</g>';
@@ -731,12 +722,13 @@
     var R_hub = bi ? 66 : 84;          // aspect hub — smaller, so lines take less room
     var R_earth = bi ? 17 : 22;        // the globe in the centre
 
-    // Ring configs: where each set of planets and its ticks/labels sit. Wider
-    // bands + bigger min-gap give the glyphs more breathing room.
+    // Ring configs: where each set of planets and its labels sit. Each planet's
+    // degree pointer runs from `tickOuter` (at its true longitude) to the glyph.
+    // Wider min-gap + a clear glyph→degree gap stop the labels overlapping.
     var natalCfg = bi
-      ? { rGlyph: 105, rDeg: 93, rTickA: 118, rTickB: 113, minGap: 9, chipR: 9.5, cls: 'cw-planet', degCls: 'cw-pdeg' }
-      : { rGlyph: 120, rDeg: 106, rTickA: 138, rTickB: 131, minGap: 11, chipR: 11, cls: 'cw-planet', degCls: 'cw-pdeg' };
-    var transCfg = { rGlyph: 138, rDeg: 127, rTickA: 150, rTickB: 145, minGap: 8.5, chipR: 9.5, cls: 'cw-planet cw-planet-t', degCls: 'cw-pdeg cw-pdeg-t' };
+      ? { rGlyph: 104, rDeg: 90, tickOuter: R_midRing, minGap: 11, chipR: 9.5, cls: 'cw-planet', degCls: 'cw-pdeg' }
+      : { rGlyph: 120, rDeg: 102, tickOuter: R_out, minGap: 13, chipR: 10.5, cls: 'cw-planet', degCls: 'cw-pdeg' };
+    var transCfg = { rGlyph: 138, rDeg: 124, tickOuter: R_out, minGap: 10, chipR: 9.5, cls: 'cw-planet cw-planet-t', degCls: 'cw-pdeg cw-pdeg-t' };
 
     var els = ['fire', 'earth', 'air', 'water'];
     var s = [];
@@ -802,18 +794,23 @@
       var o = {}; items.forEach(function (it) { o[it.key] = map[it.key]; }); return o;
     }
     function drawRing(items, cfg) {
+      var glyphEdge = cfg.rGlyph + cfg.chipR + 1;
       items.forEach(function (it) {
-        s.push(line(it.lon, cfg.rTickA, it.lon, cfg.rTickB, 'cw-ptick'));
-        if (Math.abs(A.norm180(it.disp - it.lon)) > 1.2) {
-          s.push(line(it.lon, cfg.rTickB, it.disp, cfg.rGlyph + 6, 'cw-pconn'));
-        }
+        // Degree pointer: a fine line from the true longitude on the outer
+        // scale in to the glyph chip. Its outer end marks the exact degree.
+        s.push(line(it.lon, cfg.tickOuter, it.disp, glyphEdge, 'cw-ptick'));
         var noRetro = it.key === 'NorthNode' || it.key === 'Lilith';
         var gp = pt(it.disp, cfg.rGlyph);
         var chipT = cfg.cls.indexOf('cw-planet-t') >= 0 ? ' cw-pchip-t' : '';
         s.push('<circle class="cw-pchip' + chipT + '" cx="' + gp[0].toFixed(2) + '" cy="' + gp[1].toFixed(2) + '" r="' + cfg.chipR + '"/>');
         s.push(txt(it.disp, cfg.rGlyph, cfg.cls, it.glyph));
         var dd = A.dms(it.lon);
-        s.push(txt(it.disp, cfg.rDeg, cfg.degCls, pad2n(dd.deg) + '°' + (it.retro && !noRetro ? '<tspan class="cw-r"> ℞</tspan>' : '')));
+        s.push(txt(it.disp, cfg.rDeg, cfg.degCls, pad2n(dd.deg) + '°'));
+        // Retrograde: a small mark beside the glyph, not inline with the degree.
+        if (it.retro && !noRetro) {
+          var rp = pt(it.disp, cfg.rGlyph);
+          s.push('<text class="cw-r" x="' + (rp[0] + cfg.chipR + 2).toFixed(2) + '" y="' + (rp[1] - cfg.chipR + 1).toFixed(2) + '">℞</text>');
+        }
       });
     }
 

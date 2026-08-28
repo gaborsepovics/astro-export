@@ -391,10 +391,11 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .cw-sect-b      { fill: var(--ink); opacity: 0.015; }
 .cw-hubfill     { fill: var(--surface); opacity: 0.45; stroke: none; }
 
-/* Centre globe. */
-.cw-land path   { fill: #3f9f66; stroke: #2f7d4f; stroke-width: 0.5; }
-.cw-cloud path  { fill: #ffffff; opacity: 0.30; }
-.cw-globe-rim   { stroke: rgba(255, 255, 255, 0.35); stroke-width: 1.2; }
+/* Centre globe — engraved duotone, drawn in the accent colour. */
+.cw-globe-base  { fill: var(--surface-2); }
+.cw-globe-land  { fill: var(--accent); opacity: 0.20; }
+.cw-grat        { fill: none; stroke: var(--accent); stroke-width: 0.8; opacity: 0.35; }
+.cw-globe-rim   { stroke: var(--accent); stroke-width: 1.6; opacity: 0.85; }
 
 /* Structural rings and ticks. */
 .cw-ring    { fill: none; stroke: var(--line); stroke-width: 1; }
@@ -406,8 +407,7 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .cw-signdiv { stroke: var(--line); stroke-width: 1; }
 .cw-cusp    { stroke: var(--ink-soft); stroke-width: 0.7; opacity: 0.55; }
 .cw-cusp.cw-axis { stroke: var(--accent); stroke-width: 1.6; opacity: 0.95; }
-.cw-ptick   { stroke: var(--ink); stroke-width: 1.2; }
-.cw-pconn   { stroke: var(--ink-soft); stroke-width: 0.6; opacity: 0.6; }
+.cw-ptick   { stroke: var(--ink-soft); stroke-width: 0.6; opacity: 0.5; }
 
 /* Text. SVG text is centred on its anchor point. */
 .chart-wheel text { text-anchor: middle; dominant-baseline: central; font-family: var(--sans); }
@@ -421,9 +421,9 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .cw-hnum   { font-size: 9px; fill: var(--ink-soft); opacity: 0.8; }
 .cw-planet { font-size: 15px; fill: var(--ink); }
 .cw-planet-t { fill: var(--accent); }   /* transiting planets (outer ring) */
-.cw-pdeg   { font-size: 7.5px; fill: var(--ink-soft); font-family: var(--mono); }
+.cw-pdeg   { font-size: 6.5px; fill: var(--ink-soft); font-family: var(--mono); }
 .cw-pdeg-t { fill: var(--accent); opacity: 0.85; }
-.cw-r      { fill: var(--danger); }
+.cw-r      { fill: var(--danger); font-size: 7px; font-weight: 700; }
 
 /* Aspect lines. */
 .cw-asp        { fill: none; }
