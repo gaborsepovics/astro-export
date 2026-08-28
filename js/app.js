@@ -641,6 +641,36 @@
   var WHEEL_PKEYS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
     'Uranus', 'Neptune', 'Pluto', 'NorthNode', 'Chiron', 'Lilith'];
 
+  // A small stylised "blue marble" for the centre of the wheel — pure SVG
+  // (no emoji, no external image). Authored in a radius-50 space and scaled.
+  function earthMarkup(cx, cy, r) {
+    var g = 'translate(' + cx + ',' + cy + ') scale(' + (r / 50).toFixed(4) + ')';
+    var land =
+      '<path d="M 4,-32 C 20,-36 32,-20 26,-4 C 33,8 22,24 9,28 C 1,31 -4,18 1,7 C -7,1 -3,-16 4,-32 Z"/>' +
+      '<path d="M -32,-24 C -18,-30 -10,-16 -17,-5 C -9,4 -14,20 -25,30 C -32,22 -37,6 -32,-5 C -39,-14 -37,-20 -32,-24 Z"/>' +
+      '<path d="M 15,-37 C 34,-41 44,-31 37,-21 C 28,-17 20,-26 14,-26 C 9,-31 10,-35 15,-37 Z"/>' +
+      '<path d="M 22,22 C 33,19 39,28 32,34 C 25,36 18,31 21,25 C 21,23 20,22 22,22 Z"/>';
+    return '<defs>' +
+        '<radialGradient id="cwOcean" cx="36%" cy="32%" r="75%">' +
+          '<stop offset="0%" stop-color="#a6dcf5"/>' +
+          '<stop offset="42%" stop-color="#3d92d8"/>' +
+          '<stop offset="100%" stop-color="#0f3768"/>' +
+        '</radialGradient>' +
+        '<radialGradient id="cwAtmo" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="70%" stop-color="rgba(130,190,255,0)"/>' +
+          '<stop offset="100%" stop-color="rgba(130,190,255,0.55)"/>' +
+        '</radialGradient>' +
+        '<clipPath id="cwGlobe"><circle cx="0" cy="0" r="50"/></clipPath>' +
+      '</defs>' +
+      '<g transform="' + g + '">' +
+        '<circle cx="0" cy="0" r="58" fill="url(#cwAtmo)"/>' +
+        '<circle cx="0" cy="0" r="50" fill="url(#cwOcean)"/>' +
+        '<g clip-path="url(#cwGlobe)" class="cw-land">' + land + '</g>' +
+        '<ellipse cx="-17" cy="-18" rx="17" ry="11" fill="#ffffff" opacity="0.20" transform="rotate(-35 -17 -18)"/>' +
+        '<circle cx="0" cy="0" r="50" fill="none" class="cw-globe-rim"/>' +
+      '</g>';
+  }
+
   // Draw the chart. `transit` (optional) turns it into a bi-wheel: natal
   // planets on the inner ring, transiting planets on an outer ring, and
   // transit→natal aspect lines through the centre.
@@ -670,18 +700,20 @@
     }
 
     var R_out = 166;
-    var R_zin = bi ? 150 : 140;       // zodiac inner edge
-    var R_sign = bi ? 158 : 153;
-    var R_cuspOut = bi ? 130 : R_zin; // house-cusp band
-    var R_cuspIn = bi ? 108 : 104;
-    var R_hnum = bi ? 119 : 112;
-    var R_hub = bi ? 78 : 96;         // aspect hub
+    var R_zin = bi ? 150 : 138;        // zodiac inner edge
+    var R_sign = bi ? 158 : 152;
+    var R_pin = bi ? 84 : 100;         // inner ring below the planet band
+    var R_midRing = bi ? 118 : 0;      // divider between the two planet rings (bi)
+    var R_hnum = bi ? 121 : 92;        // house numbers
+    var R_hub = bi ? 66 : 84;          // aspect hub — smaller, so lines take less room
+    var R_earth = bi ? 24 : 30;        // the globe in the centre
 
-    // Ring configs: where each set of planets and its ticks/labels sit.
+    // Ring configs: where each set of planets and its ticks/labels sit. Wider
+    // bands + bigger min-gap give the glyphs more breathing room.
     var natalCfg = bi
-      ? { rGlyph: 96, rDeg: 86, rTickA: 108, rTickB: 104, minGap: 9, cls: 'cw-planet', degCls: 'cw-pdeg' }
-      : { rGlyph: 125, rDeg: 114, rTickA: 140, rTickB: 132, minGap: 8, cls: 'cw-planet', degCls: 'cw-pdeg' };
-    var transCfg = { rGlyph: 139, rDeg: 129, rTickA: 150, rTickB: 145, minGap: 8, cls: 'cw-planet cw-planet-t', degCls: 'cw-pdeg cw-pdeg-t' };
+      ? { rGlyph: 105, rDeg: 93, rTickA: 118, rTickB: 113, minGap: 9, chipR: 9.5, cls: 'cw-planet', degCls: 'cw-pdeg' }
+      : { rGlyph: 120, rDeg: 106, rTickA: 138, rTickB: 131, minGap: 11, chipR: 11, cls: 'cw-planet', degCls: 'cw-pdeg' };
+    var transCfg = { rGlyph: 138, rDeg: 127, rTickA: 150, rTickB: 145, minGap: 8.5, chipR: 9.5, cls: 'cw-planet cw-planet-t', degCls: 'cw-pdeg cw-pdeg-t' };
 
     var els = ['fire', 'earth', 'air', 'water'];
     var s = [];
@@ -695,8 +727,8 @@
 
     s.push(circle(R_out, 'cw-ring'));
     s.push(circle(R_zin, 'cw-ring'));
-    if (bi) s.push(circle(R_cuspOut, 'cw-ring'));
-    s.push(circle(R_cuspIn, 'cw-ring'));
+    if (R_midRing) s.push(circle(R_midRing, 'cw-ring'));
+    s.push(circle(R_pin, 'cw-ring'));
     s.push(circle(R_hub, 'cw-ring cw-hub'));
     // A dashed "grip" ring in transit mode signals the wheel is rotatable.
     if (bi) s.push(circle(R_out + 4, 'cw-grip'));
@@ -708,22 +740,27 @@
       s.push(line(dg, R_zin, dg, R_zin - tl, 'cw-tick'));
     }
 
-    // Sign dividers + element-tinted glyphs.
+    // Sign sector dividers (glyphs are drawn later, on top of the cusp spokes).
     for (var i2 = 0; i2 < 12; i2++) {
       s.push(line(i2 * 30, R_zin, i2 * 30, R_out, 'cw-signdiv'));
-      s.push(txt(i2 * 30 + 15, R_sign, 'cw-sign cw-' + els[i2 % 4], A.SIGNS[i2].glyph));
     }
 
-    // House cusps; the four angles drawn bolder with AC/DC/MC/IC labels.
+    // House cusps run as full spokes from the outer edge in to the hub; the
+    // four angles are drawn bolder with AC/DC/MC/IC labels.
     var axisLbl = { 1: 'AC', 7: 'DC', 10: 'MC', 4: 'IC' };
     for (var h = 1; h <= 12; h++) {
       var lon = chart.cusps[h];
       var isAxis = axisLbl[h] != null;
-      s.push(line(lon, R_cuspOut, lon, R_cuspIn, 'cw-cusp' + (isAxis ? ' cw-axis' : '')));
+      s.push(line(lon, R_out, lon, R_hub, 'cw-cusp' + (isAxis ? ' cw-axis' : '')));
       if (isAxis) s.push(txt(lon, R_out + 11, 'cw-axislbl', axisLbl[h]));
       var b = chart.cusps[h === 12 ? 1 : h + 1];
       var mid = chart.cusps[h] + A.norm360(b - chart.cusps[h]) / 2;
       s.push(txt(mid, R_hnum, 'cw-hnum', '' + h));
+    }
+
+    // Sign glyphs on top, so a cusp spoke never cuts through one.
+    for (var i3 = 0; i3 < 12; i3++) {
+      s.push(txt(i3 * 30 + 15, R_sign, 'cw-sign cw-' + els[i3 % 4], A.SIGNS[i3].glyph));
     }
 
     // Collect + spread a ring of planet glyphs from a positions map.
@@ -749,7 +786,7 @@
         var noRetro = it.key === 'NorthNode' || it.key === 'Lilith';
         var gp = pt(it.disp, cfg.rGlyph);
         var chipT = cfg.cls.indexOf('cw-planet-t') >= 0 ? ' cw-pchip-t' : '';
-        s.push('<circle class="cw-pchip' + chipT + '" cx="' + gp[0].toFixed(2) + '" cy="' + gp[1].toFixed(2) + '" r="9"/>');
+        s.push('<circle class="cw-pchip' + chipT + '" cx="' + gp[0].toFixed(2) + '" cy="' + gp[1].toFixed(2) + '" r="' + cfg.chipR + '"/>');
         s.push(txt(it.disp, cfg.rGlyph, cfg.cls, it.glyph));
         var dd = A.dms(it.lon);
         s.push(txt(it.disp, cfg.rDeg, cfg.degCls, pad2n(dd.deg) + '°' + (it.retro && !noRetro ? '<tspan class="cw-r"> ℞</tspan>' : '')));
@@ -766,6 +803,7 @@
       asps.forEach(function (x) {
         s.push(line(transit.positions[x.a].lon, R_hub, chart.positions[x.b].lon, R_hub, 'cw-asp ' + aspectClass(x.aspect)));
       });
+      s.push(earthMarkup(170, 170, R_earth));   // globe over the aspect crossing
       drawRing(transItems, transCfg);
       drawRing(natalItems, natalCfg);
     } else {
@@ -774,6 +812,7 @@
       asps2.forEach(function (x) {
         s.push(line(chart.positions[x.a].lon, R_hub, chart.positions[x.b].lon, R_hub, 'cw-asp ' + aspectClass(x.aspect)));
       });
+      s.push(earthMarkup(170, 170, R_earth));
       drawRing(natalItems, natalCfg);
     }
 

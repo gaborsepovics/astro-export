@@ -393,6 +393,10 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .cw-sect-water  { fill: #3a76c4; opacity: 0.07; }
 .cw-hubfill     { fill: var(--surface); opacity: 0.45; stroke: none; }
 
+/* Centre globe. */
+.cw-land path   { fill: #3f9f66; stroke: #2f7d4f; stroke-width: 0.6; }
+.cw-globe-rim   { stroke: rgba(255, 255, 255, 0.3); stroke-width: 1.4; }
+
 /* Structural rings and ticks. */
 .cw-ring    { fill: none; stroke: var(--line); stroke-width: 1; }
 .cw-grip    { fill: none; stroke: var(--accent); stroke-width: 1.4; stroke-dasharray: 2 5; opacity: 0.55; }
