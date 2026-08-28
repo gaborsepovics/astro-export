@@ -385,17 +385,16 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
   margin-top: 8px; text-align: center; font-size: 12px; color: var(--accent);
   font-weight: 600;
 }
-/* Zodiac band, faintly tinted by element; hub disc. */
+/* Zodiac band: calm alternating two-tone (the element shows in the glyph). */
 .cw-sect        { stroke: none; }
-.cw-sect-fire   { fill: #d1495b; opacity: 0.07; }
-.cw-sect-earth  { fill: #2e8b57; opacity: 0.07; }
-.cw-sect-air    { fill: #c08a1e; opacity: 0.08; }
-.cw-sect-water  { fill: #3a76c4; opacity: 0.07; }
+.cw-sect-a      { fill: var(--ink); opacity: 0.05; }
+.cw-sect-b      { fill: var(--ink); opacity: 0.015; }
 .cw-hubfill     { fill: var(--surface); opacity: 0.45; stroke: none; }
 
 /* Centre globe. */
-.cw-land path   { fill: #3f9f66; stroke: #2f7d4f; stroke-width: 0.6; }
-.cw-globe-rim   { stroke: rgba(255, 255, 255, 0.3); stroke-width: 1.4; }
+.cw-land path   { fill: #3f9f66; stroke: #2f7d4f; stroke-width: 0.5; }
+.cw-cloud path  { fill: #ffffff; opacity: 0.30; }
+.cw-globe-rim   { stroke: rgba(255, 255, 255, 0.35); stroke-width: 1.2; }
 
 /* Structural rings and ticks. */
 .cw-ring    { fill: none; stroke: var(--line); stroke-width: 1; }
@@ -413,10 +412,11 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 /* Text. SVG text is centred on its anchor point. */
 .chart-wheel text { text-anchor: middle; dominant-baseline: central; font-family: var(--sans); }
 .cw-sign   { font-size: 15px; }
-.cw-fire   { fill: #d1495b; }
-.cw-earth  { fill: #2e8b57; }
-.cw-air    { fill: #c08a1e; }
-.cw-water  { fill: #3a76c4; }
+/* Signs coloured strictly by element (four distinct colours, not a rainbow). */
+.cw-fire   { fill: #db5138; }   /* Fire — red */
+.cw-earth  { fill: #3f9256; }   /* Earth — green */
+.cw-air    { fill: #e0aa2e; }   /* Air — yellow/gold */
+.cw-water  { fill: #3f7fca; }   /* Water — blue */
 .cw-axislbl { font-size: 11px; font-weight: 800; fill: var(--accent); letter-spacing: 0.5px; }
 .cw-hnum   { font-size: 9px; fill: var(--ink-soft); opacity: 0.8; }
 .cw-planet { font-size: 15px; fill: var(--ink); }

@@ -641,32 +641,55 @@
   var WHEEL_PKEYS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
     'Uranus', 'Neptune', 'Pluto', 'NorthNode', 'Chiron', 'Lilith'];
 
-  // A small stylised "blue marble" for the centre of the wheel — pure SVG
-  // (no emoji, no external image). Authored in a radius-50 space and scaled.
+  // A small, detailed "blue marble" for the centre of the wheel — pure SVG
+  // (no emoji, no external image). Africa-facing view, authored in a radius-50
+  // space and scaled: ocean gradient, continents, soft clouds, sphere shading,
+  // a specular highlight and an atmospheric halo.
   function earthMarkup(cx, cy, r) {
     var g = 'translate(' + cx + ',' + cy + ') scale(' + (r / 50).toFixed(4) + ')';
     var land =
-      '<path d="M 4,-32 C 20,-36 32,-20 26,-4 C 33,8 22,24 9,28 C 1,31 -4,18 1,7 C -7,1 -3,-16 4,-32 Z"/>' +
-      '<path d="M -32,-24 C -18,-30 -10,-16 -17,-5 C -9,4 -14,20 -25,30 C -32,22 -37,6 -32,-5 C -39,-14 -37,-20 -32,-24 Z"/>' +
-      '<path d="M 15,-37 C 34,-41 44,-31 37,-21 C 28,-17 20,-26 14,-26 C 9,-31 10,-35 15,-37 Z"/>' +
-      '<path d="M 22,22 C 33,19 39,28 32,34 C 25,36 18,31 21,25 C 21,23 20,22 22,22 Z"/>';
+      // Africa
+      '<path d="M -2,-22 C 8,-25 15,-16 12,-6 C 17,2 14,14 6,20 C 2,27 -6,28 -8,20 C -13,14 -11,3 -9,-4 C -13,-11 -10,-18 -2,-22 Z"/>' +
+      // Europe
+      '<path d="M -12,-25 C -6,-28 -1,-25 -4,-20 C -9,-18 -15,-21 -12,-25 Z"/>' +
+      // Arabia / Middle East
+      '<path d="M 13,-9 C 19,-12 24,-6 19,-1 C 15,1 11,-4 13,-9 Z"/>' +
+      // Asia
+      '<path d="M 15,-27 C 31,-32 42,-22 34,-13 C 27,-10 20,-17 15,-19 C 12,-23 11,-25 15,-27 Z"/>' +
+      // Madagascar
+      '<path d="M 12,14 C 15,13 16,17 14,20 C 12,21 10,18 12,14 Z"/>' +
+      // South America (limb, lower-left)
+      '<path d="M -32,4 C -26,0 -21,9 -25,17 C -28,25 -34,27 -36,19 C -37,13 -36,7 -32,4 Z"/>';
+    var clouds =
+      '<path d="M -23,-9 C -12,-14 1,-9 -6,-4 C -15,-1 -25,-3 -23,-9 Z"/>' +
+      '<path d="M 6,11 C 17,6 27,12 18,17 C 9,20 1,15 6,11 Z"/>' +
+      '<path d="M -5,-19 C 4,-22 13,-18 6,-14 C -1,-13 -9,-16 -5,-19 Z"/>';
     return '<defs>' +
-        '<radialGradient id="cwOcean" cx="36%" cy="32%" r="75%">' +
-          '<stop offset="0%" stop-color="#a6dcf5"/>' +
-          '<stop offset="42%" stop-color="#3d92d8"/>' +
-          '<stop offset="100%" stop-color="#0f3768"/>' +
+        '<radialGradient id="cwOcean" cx="40%" cy="34%" r="72%">' +
+          '<stop offset="0%" stop-color="#7cc0ee"/>' +
+          '<stop offset="38%" stop-color="#2f7fc9"/>' +
+          '<stop offset="100%" stop-color="#072142"/>' +
+        '</radialGradient>' +
+        '<radialGradient id="cwShade" cx="34%" cy="30%" r="80%">' +
+          '<stop offset="60%" stop-color="rgba(0,12,30,0)"/>' +
+          '<stop offset="100%" stop-color="rgba(0,12,30,0.6)"/>' +
         '</radialGradient>' +
         '<radialGradient id="cwAtmo" cx="50%" cy="50%" r="50%">' +
-          '<stop offset="70%" stop-color="rgba(130,190,255,0)"/>' +
-          '<stop offset="100%" stop-color="rgba(130,190,255,0.55)"/>' +
+          '<stop offset="66%" stop-color="rgba(150,205,255,0)"/>' +
+          '<stop offset="90%" stop-color="rgba(150,205,255,0.45)"/>' +
+          '<stop offset="100%" stop-color="rgba(150,205,255,0)"/>' +
         '</radialGradient>' +
         '<clipPath id="cwGlobe"><circle cx="0" cy="0" r="50"/></clipPath>' +
       '</defs>' +
       '<g transform="' + g + '">' +
-        '<circle cx="0" cy="0" r="58" fill="url(#cwAtmo)"/>' +
+        '<circle cx="0" cy="0" r="60" fill="url(#cwAtmo)"/>' +
         '<circle cx="0" cy="0" r="50" fill="url(#cwOcean)"/>' +
-        '<g clip-path="url(#cwGlobe)" class="cw-land">' + land + '</g>' +
-        '<ellipse cx="-17" cy="-18" rx="17" ry="11" fill="#ffffff" opacity="0.20" transform="rotate(-35 -17 -18)"/>' +
+        '<g clip-path="url(#cwGlobe)">' +
+          '<g class="cw-land">' + land + '</g>' +
+          '<g class="cw-cloud">' + clouds + '</g>' +
+          '<circle cx="0" cy="0" r="50" fill="url(#cwShade)"/>' +
+          '<ellipse cx="-18" cy="-19" rx="15" ry="9" fill="#ffffff" opacity="0.22" transform="rotate(-35 -18 -19)"/>' +
+        '</g>' +
         '<circle cx="0" cy="0" r="50" fill="none" class="cw-globe-rim"/>' +
       '</g>';
   }
@@ -706,7 +729,7 @@
     var R_midRing = bi ? 118 : 0;      // divider between the two planet rings (bi)
     var R_hnum = bi ? 121 : 92;        // house numbers
     var R_hub = bi ? 66 : 84;          // aspect hub — smaller, so lines take less room
-    var R_earth = bi ? 24 : 30;        // the globe in the centre
+    var R_earth = bi ? 17 : 22;        // the globe in the centre
 
     // Ring configs: where each set of planets and its ticks/labels sit. Wider
     // bands + bigger min-gap give the glyphs more breathing room.
@@ -718,9 +741,10 @@
     var els = ['fire', 'earth', 'air', 'water'];
     var s = [];
 
-    // Zodiac band: each sign faintly tinted by its element for a rich ring.
+    // Zodiac band: calm alternating two-tone sectors (no rainbow). The element
+    // is shown by the sign glyph's colour, not by the background.
     for (var i = 0; i < 12; i++) {
-      s.push(sector(i * 30, i * 30 + 30, R_out, R_zin, 'cw-sect cw-sect-' + els[i % 4]));
+      s.push(sector(i * 30, i * 30 + 30, R_out, R_zin, 'cw-sect cw-sect-' + (i % 2 ? 'a' : 'b')));
     }
     // Faint disc behind the aspect hub so the lines read on a calm ground.
     s.push(circle(R_hub, 'cw-hubfill'));
