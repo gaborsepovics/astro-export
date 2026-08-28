@@ -371,8 +371,11 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* ---- Natal chart wheel ------------------------------------------------- */
+/* Let the wheel use the card's full width (break out of its side padding) so
+   it reads larger, especially on a phone. */
+.chart-wheel { margin: 0 -16px; }
 .chart-wheel svg {
-  width: 100%; height: auto; max-width: 440px; display: block; margin: 0 auto;
+  width: 100%; height: auto; max-width: 560px; display: block; margin: 0 auto;
   touch-action: pan-y; /* let the page scroll over the wheel */
 }
 /* In transit mode the wheel is a rotatable time dial. */
