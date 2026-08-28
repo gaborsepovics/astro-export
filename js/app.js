@@ -37,7 +37,9 @@
       presetNow: 'Most', presetTomorrow: 'Holnap', presetNextWeek: '+1 hét',
       presetNextMonth: '+1 hónap', presetBirthday: 'Szülinap', presetNoon: 'Dél',
       missingCoords: 'Adj meg helyet vagy koordinátákat', born: 'szül.',
-      manualPlace: 'vagy add meg kézzel a koordinátákat', generating: 'Számítás…'
+      manualPlace: 'vagy add meg kézzel a koordinátákat', generating: 'Számítás…',
+      chartTitle: 'Natál chart-kör', chartNeed: 'Adj meg születési adatokat (dátum, hely) a chart-kör megjelenítéséhez.',
+      legHarm: 'harmonikus', legTense: 'feszült', legConj: 'együttállás', legMinor: 'minor'
     },
     en: {
       appTitle: 'Astro Export', peopleTitle: 'People', targetTitle: 'Target time',
@@ -65,7 +67,9 @@
       presetNow: 'Now', presetTomorrow: 'Tomorrow', presetNextWeek: '+1 week',
       presetNextMonth: '+1 month', presetBirthday: 'Birthday', presetNoon: 'Noon',
       missingCoords: 'Provide a place or coordinates', born: 'born',
-      manualPlace: 'or enter coordinates manually', generating: 'Calculating…'
+      manualPlace: 'or enter coordinates manually', generating: 'Calculating…',
+      chartTitle: 'Natal chart wheel', chartNeed: 'Add birth data (date, place) to see the chart wheel.',
+      legHarm: 'harmonious', legTense: 'tense', legConj: 'conjunction', legMinor: 'minor'
     }
   };
   function t(k) { return (I18N[state.settings.lang] || I18N.hu)[k] || k; }
@@ -153,7 +157,7 @@
         (p.isDefault ? '<span class="default-tag">' + t('defaultTag') + '</span>' : '') +
         '<span class="sub">' + esc(sub) + '</span>';
       el.addEventListener('click', function () {
-        state.selectedPersonId = p.id; saveState(); renderPeople(); renderPersonSummary();
+        state.selectedPersonId = p.id; saveState(); renderPeople(); renderPersonSummary(); renderChartWheel();
       });
       row.appendChild(el);
     });
@@ -265,7 +269,7 @@
 
       var stepper = makeStepper(
         function () { return state.settings.orbs[a.key] != null ? state.settings.orbs[a.key] : a.orb; },
-        function (v) { state.settings.orbs[a.key] = v; saveState(); },
+        function (v) { state.settings.orbs[a.key] = v; saveState(); scheduleWheel(); },
         { min: 0, max: 15, step: 0.5, suffix: '°' }
       );
       stepper.setDisabled(!on);
@@ -277,7 +281,7 @@
         var i = state.settings.aspects.indexOf(a.key);
         if (cb.checked) { if (i < 0) state.settings.aspects.push(a.key); }
         else { if (i >= 0) state.settings.aspects.splice(i, 1); }
-        stepper.setDisabled(!cb.checked); saveState();
+        stepper.setDisabled(!cb.checked); saveState(); scheduleWheel();
       });
       sw.appendChild(cb); sw.appendChild(sl);
 
@@ -292,7 +296,7 @@
     lumName.className = 'asp-name'; lumName.innerHTML = '<span class="asp-glyph">☉☽</span><span>' + t('lumBonus') + '</span>';
     var lumStep = makeStepper(
       function () { return state.settings.luminaryBonus; },
-      function (v) { state.settings.luminaryBonus = v; saveState(); },
+      function (v) { state.settings.luminaryBonus = v; saveState(); scheduleWheel(); },
       { min: 0, max: 10, step: 0.5, suffix: '°', prefix: '+' }
     );
     lumRow.appendChild(lumName); lumRow.appendChild(lumStep.el); lumRow.appendChild(document.createElement('span'));
@@ -305,7 +309,7 @@
       state.settings.orbs = defaultOrbs();
       state.settings.luminaryBonus = A.LUMINARY_BONUS != null ? A.LUMINARY_BONUS : 2;
       state.settings.aspects = A.ASPECTS.map(function (x) { return x.key; });
-      saveState(); renderAspectChips();
+      saveState(); renderAspectChips(); renderChartWheel();
     });
     host.appendChild(reset);
   }
@@ -553,19 +557,189 @@
       if (!editing) state.people.push(p);
       if (!state.people.some(function (o) { return o.isDefault; })) state.people[0].isDefault = true;
       state.selectedPersonId = p.id;
-      saveState(); closeModal(); renderPeople(); renderPersonSummary();
+      saveState(); closeModal(); renderPeople(); renderPersonSummary(); renderChartWheel();
     });
     $('mCancel').addEventListener('click', closeModal);
     if (editing) $('mDelete').addEventListener('click', function () {
       state.people = state.people.filter(function (o) { return o.id !== p.id; });
       if (state.people.length && !state.people.some(function (o) { return o.isDefault; })) state.people[0].isDefault = true;
       state.selectedPersonId = state.people[0] ? state.people[0].id : null;
-      saveState(); closeModal(); renderPeople(); renderPersonSummary();
+      saveState(); closeModal(); renderPeople(); renderPersonSummary(); renderChartWheel();
     });
     $('mb').addEventListener('click', function (e) { if (e.target.id === 'mb') closeModal(); });
   }
 
   function closeModal() { $('modalRoot').innerHTML = ''; }
+
+  // ---- Natal chart wheel (SVG) ------------------------------------------
+  // A classic astrological wheel of the selected person's natal chart:
+  // zodiac ring, house cusps, planet glyphs (placed by ecliptic longitude,
+  // spread apart when they crowd), and aspect lines through the centre.
+  function bodyGlyph(key) {
+    for (var i = 0; i < A.BODIES.length; i++) if (A.BODIES[i].key === key) return A.BODIES[i].glyph;
+    return '?';
+  }
+
+  // Compute the natal chart for the selected person, or null if data missing.
+  function selectedChart() {
+    var p = selectedPerson();
+    if (!p || p.lat == null || p.lon == null || !p.birthDate) return null;
+    var dp = p.birthDate.split('-');
+    var tp = (p.birthTime || '12:00').split(':');
+    var birthUTC = A.wallTimeToUTC(p.tz || 'Europe/Budapest', {
+      year: +dp[0], month: +dp[1], day: +dp[2], hour: +tp[0], minute: +tp[1]
+    });
+    try {
+      var chart = A.computeChart({ date: birthUTC, lat: p.lat, lon: p.lon, houseSystem: state.settings.houseSystem });
+      if (!chart.cusps || !chart.angles) return null;
+      return { chart: chart, person: p };
+    } catch (e) { return null; }
+  }
+
+  // Push glyphs apart (in longitude space) so crowded planets stay legible,
+  // while their true positions are still marked with a tick on the ring.
+  function spreadGlyphs(items, minGap) {
+    var n = items.length;
+    if (!n) return;
+    items.forEach(function (it) { it.disp = it.lon; });
+    for (var iter = 0; iter < 80; iter++) {
+      var moved = false;
+      for (var i = 0; i < n; i++) {
+        var j = (i + 1) % n;
+        var gap = A.norm360(items[j].disp - items[i].disp);
+        if (gap < minGap - 1e-3) {
+          var push = (minGap - gap) / 2;
+          items[i].disp = A.norm360(items[i].disp - push);
+          items[j].disp = A.norm360(items[j].disp + push);
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+  }
+
+  function aspectClass(key) {
+    if (key === 'conjunction') return 'cw-a-conj';
+    if (key === 'opposition' || key === 'square') return 'cw-a-hard';
+    if (key === 'trine' || key === 'sextile') return 'cw-a-soft';
+    return 'cw-a-minor';
+  }
+
+  function pad2n(n) { return (n < 10 ? '0' : '') + n; }
+
+  function buildWheelSVG(chart) {
+    var cx = 170, cy = 170, asc = chart.angles.asc;
+    // Longitude -> point. ASC sits due-left; longitude increases counter-clockwise.
+    function pt(lon, r) {
+      var a = (180 - (lon - asc)) * Math.PI / 180;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    }
+    function xy(lon, r) { var q = pt(lon, r); return q[0].toFixed(2) + ' ' + q[1].toFixed(2); }
+    function line(lon1, r1, lon2, r2, cls) {
+      var a = pt(lon1, r1), b = pt(lon2, r2);
+      return '<line class="' + cls + '" x1="' + a[0].toFixed(2) + '" y1="' + a[1].toFixed(2) +
+        '" x2="' + b[0].toFixed(2) + '" y2="' + b[1].toFixed(2) + '"/>';
+    }
+    function txt(lon, r, cls, str) {
+      var q = pt(lon, r);
+      return '<text class="' + cls + '" x="' + q[0].toFixed(2) + '" y="' + q[1].toFixed(2) + '">' + str + '</text>';
+    }
+
+    var R_out = 166, R_zin = 140, R_cusp = 104, R_hub = 96;
+    var R_sign = 153, R_planet = 125, R_tickA = 140, R_tickB = 132, R_hnum = 112, R_pdeg = 114;
+
+    var s = [];
+    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_out + '"/>');
+    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_zin + '"/>');
+    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_cusp + '"/>');
+    s.push('<circle class="cw-ring cw-hub" cx="170" cy="170" r="' + R_hub + '"/>');
+
+    // Degree ticks every 5°, longer on the tens.
+    for (var dg = 0; dg < 360; dg += 5) {
+      s.push(line(dg, R_zin, dg, R_zin - (dg % 10 === 0 ? 5 : 3), 'cw-tick'));
+    }
+
+    // Zodiac sign sectors: divider every 30° + a glyph, tinted by element.
+    var els = ['fire', 'earth', 'air', 'water'];
+    for (var i = 0; i < 12; i++) {
+      s.push(line(i * 30, R_zin, i * 30, R_out, 'cw-signdiv'));
+      s.push(txt(i * 30 + 15, R_sign, 'cw-sign cw-' + els[i % 4], A.SIGNS[i].glyph));
+    }
+
+    // House cusps; the four angles drawn bolder with AC/DC/MC/IC labels.
+    var axisLbl = { 1: 'AC', 7: 'DC', 10: 'MC', 4: 'IC' };
+    for (var h = 1; h <= 12; h++) {
+      var lon = chart.cusps[h];
+      var isAxis = axisLbl[h] != null;
+      s.push(line(lon, R_zin, lon, R_cusp, 'cw-cusp' + (isAxis ? ' cw-axis' : '')));
+      if (isAxis) s.push(txt(lon, R_out + 11, 'cw-axislbl', axisLbl[h]));
+      // House number at the middle of the sector.
+      var b = chart.cusps[h === 12 ? 1 : h + 1];
+      var mid = chart.cusps[h] + A.norm360(b - chart.cusps[h]) / 2;
+      s.push(txt(mid, R_hnum, 'cw-hnum', '' + h));
+    }
+
+    // Planets (+ nodes, Chiron, Lilith). Ticks mark true longitude; glyphs
+    // are spread so labels don't overlap.
+    var pkeys = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
+      'Uranus', 'Neptune', 'Pluto', 'NorthNode', 'Chiron', 'Lilith'];
+    var items = [];
+    pkeys.forEach(function (k) {
+      var pos = chart.positions[k];
+      if (pos) items.push({ key: k, lon: pos.lon, retro: pos.retro, glyph: bodyGlyph(k) });
+    });
+    items.sort(function (a, b) { return a.lon - b.lon; });
+    spreadGlyphs(items, 8);
+
+    // Aspect lines among the displayed bodies (respecting the user's toggles/orbs).
+    var subset = {};
+    items.forEach(function (it) { subset[it.key] = chart.positions[it.key]; });
+    var asps = A.findAspects(subset, subset, {
+      aspects: state.settings.aspects, orbs: state.settings.orbs, luminaryBonus: state.settings.luminaryBonus
+    });
+    asps.forEach(function (x) {
+      s.push(line(chart.positions[x.a].lon, R_hub, chart.positions[x.b].lon, R_hub, 'cw-asp ' + aspectClass(x.aspect)));
+    });
+
+    // Planet ticks, connectors and glyphs (drawn last, on top).
+    items.forEach(function (it) {
+      s.push(line(it.lon, R_tickA, it.lon, R_tickB, 'cw-ptick'));
+      if (Math.abs(A.norm180(it.disp - it.lon)) > 1.2) {
+        s.push(line(it.lon, R_tickB, it.disp, R_planet + 7, 'cw-pconn'));
+      }
+      var noRetro = it.key === 'NorthNode' || it.key === 'Lilith';
+      s.push(txt(it.disp, R_planet, 'cw-planet', it.glyph));
+      var dd = A.dms(it.lon);
+      s.push(txt(it.disp, R_pdeg, 'cw-pdeg', pad2n(dd.deg) + '°' + (it.retro && !noRetro ? '<tspan class="cw-r"> ℞</tspan>' : '')));
+    });
+
+    return '<svg viewBox="-14 -14 368 368" role="img" aria-label="natal chart wheel">' + s.join('') + '</svg>';
+  }
+
+  // Coalesce rapid updates (e.g. holding an orb stepper) into one repaint.
+  var _wheelRaf = 0;
+  function scheduleWheel() {
+    if (_wheelRaf) return;
+    _wheelRaf = requestAnimationFrame(function () { _wheelRaf = 0; renderChartWheel(); });
+  }
+
+  function renderChartWheel() {
+    var host = $('chartWheel');
+    if (!host) return;
+    var sc = selectedChart();
+    if (!sc) { host.innerHTML = '<div class="empty">' + t('chartNeed') + '</div>'; return; }
+    var p = sc.person;
+    var hs = A.HOUSE_SYSTEMS.filter(function (x) { return x.key === state.settings.houseSystem; })[0];
+    var hsName = hs ? (state.settings.lang === 'hu' ? hs.hu : hs.en) : state.settings.houseSystem;
+    var cap = esc([p.name, hsName, [p.birthDate, p.birthTime].filter(Boolean).join(' ')].filter(Boolean).join(' · '));
+    var legend = '<div class="cw-legend">' +
+      '<span class="cw-lg"><i class="cw-a-soft"></i>' + t('legHarm') + '</span>' +
+      '<span class="cw-lg"><i class="cw-a-hard"></i>' + t('legTense') + '</span>' +
+      '<span class="cw-lg"><i class="cw-a-conj"></i>' + t('legConj') + '</span>' +
+      '<span class="cw-lg"><i class="cw-a-minor"></i>' + t('legMinor') + '</span>' +
+      '</div>';
+    host.innerHTML = buildWheelSVG(sc.chart) + legend + '<div class="cw-caption">' + cap + '</div>';
+  }
 
   // ---- Generate ----------------------------------------------------------
 
@@ -667,6 +841,7 @@
     applyI18n();
     renderPeople(); renderPersonSummary(); renderHouseSystems();
     renderIncludeToggles(); renderAspectChips(); renderPresets();
+    renderChartWheel();
     if (!state.targetMs) state.targetMs = Date.now();
     renderTarget();
     setupWheel();
@@ -675,7 +850,7 @@
       b.addEventListener('click', function () {
         state.settings.lang = b.getAttribute('data-lang'); saveState();
         applyI18n(); renderPeople(); renderPersonSummary(); renderHouseSystems();
-        renderIncludeToggles(); renderAspectChips(); renderPresets(); renderTarget();
+        renderIncludeToggles(); renderAspectChips(); renderPresets(); renderChartWheel(); renderTarget();
       });
     });
     document.querySelectorAll('#granularity button').forEach(function (b) {
@@ -686,7 +861,7 @@
         renderWheel();
       });
     });
-    $('houseSystem').addEventListener('change', function (e) { state.settings.houseSystem = e.target.value; saveState(); });
+    $('houseSystem').addEventListener('change', function (e) { state.settings.houseSystem = e.target.value; saveState(); renderChartWheel(); });
     $('manualTarget').addEventListener('change', function (e) {
       if (e.target.value) { var d = new Date(e.target.value); if (!isNaN(d)) setTarget(d.getTime()); }
     });
