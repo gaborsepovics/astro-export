@@ -366,8 +366,10 @@
     $('targetSub').innerHTML = (isNow ? '<span class="now-flag">' + t('now') + '</span> · ' : '') + t('localTime');
     var mi = $('manualTarget');
     if (mi && document.activeElement !== mi) mi.value = toLocalInput(d);
-    // In bi-wheel mode the transit ring follows the target time.
-    if (state.settings.wheelMode === 'transit') scheduleWheel();
+    // In bi-wheel mode the transit ring follows the target time. During an
+    // active rotation drag the wheel is updated in place instead (see the drag
+    // handler), so skip the full rebuild here.
+    if (state.settings.wheelMode === 'transit' && !cwDragActive) scheduleWheel();
   }
 
   function renderTarget() { renderTargetNumber(); renderWheel(); }
@@ -775,42 +777,50 @@
       drawRing(natalItems, natalCfg);
     }
 
-    return '<svg viewBox="-14 -14 368 368" role="img" aria-label="' +
-      (bi ? 'natal and transit bi-wheel' : 'natal chart wheel') + '">' + s.join('') + '</svg>';
+    // Inner markup only; the <svg> wrapper is kept stable by the caller so a
+    // live rotation drag isn't interrupted by the element being recreated.
+    return s.join('');
   }
+  var CW_SVG_OPEN = '<svg viewBox="-14 -14 368 368" class="cw-svg" role="img" aria-label="chart wheel">';
 
-  // Coalesce rapid updates (e.g. holding an orb stepper) into one repaint.
+  // Coalesce rapid updates (e.g. holding an orb stepper) into one full repaint.
   var _wheelRaf = 0;
   function scheduleWheel() {
     if (_wheelRaf) return;
     _wheelRaf = requestAnimationFrame(function () { _wheelRaf = 0; renderChartWheel(); });
+  }
+  // A lighter repaint used during a rotation drag: swap only the SVG's inner
+  // content (the element itself stays, so the gesture is never interrupted).
+  var _liveRaf = 0;
+  function scheduleLiveWheel() {
+    if (_liveRaf) return;
+    _liveRaf = requestAnimationFrame(function () { _liveRaf = 0; updateWheelLive(); });
+  }
+
+  // Transiting planets for the target time, placed in the natal houses.
+  function computeTransit(natalChart, p) {
+    if (state.settings.wheelMode !== 'transit') return null;
+    try {
+      return A.computeChart({
+        date: new Date(state.targetMs), lat: p.lat, lon: p.lon,
+        houseSystem: state.settings.houseSystem, withHouses: false, placeInCusps: natalChart.cusps
+      });
+    } catch (e) { return null; }
   }
 
   function renderChartWheel() {
     var host = $('chartWheel');
     if (!host) return;
     var sc = selectedChart();
-    if (!sc) { host.innerHTML = '<div class="empty">' + t('chartNeed') + '</div>'; return; }
+    if (!sc) { host.classList.remove('cw-rotatable'); host.innerHTML = '<div class="empty">' + t('chartNeed') + '</div>'; return; }
     var p = sc.person;
     var hs = A.HOUSE_SYSTEMS.filter(function (x) { return x.key === state.settings.houseSystem; })[0];
     var hsName = hs ? (state.settings.lang === 'hu' ? hs.hu : hs.en) : state.settings.houseSystem;
-
-    // Bi-wheel: transiting planets for the target time, placed in natal houses.
-    var transit = null;
-    if (state.settings.wheelMode === 'transit') {
-      try {
-        transit = A.computeChart({
-          date: new Date(state.targetMs), lat: p.lat, lon: p.lon,
-          houseSystem: state.settings.houseSystem, withHouses: false, placeInCusps: sc.chart.cusps
-        });
-      } catch (e) { transit = null; }
-    }
+    var transit = computeTransit(sc.chart, p);
 
     var cap = esc([p.name, hsName, [p.birthDate, p.birthTime].filter(Boolean).join(' ')].filter(Boolean).join(' · '));
-    var cap2 = '';
-    if (transit) {
-      cap2 = '<div class="cw-caption cw-caption-t">' + t('cwTransitCap') + ': ' + esc(fmtTargetShort(state.targetMs)) + '</div>';
-    }
+    var cap2 = transit
+      ? '<div class="cw-caption cw-caption-t">' + t('cwTransitCap') + ': ' + esc(fmtTargetShort(state.targetMs)) + '</div>' : '';
     var aspNote = '<div class="cw-caption">' + t(transit ? 'cwAspTransit' : 'cwAspNatal') + '</div>';
     var legend = '<div class="cw-legend">' +
       '<span class="cw-lg"><i class="cw-a-soft"></i>' + t('legHarm') + '</span>' +
@@ -820,12 +830,28 @@
       '</div>';
     host.classList.toggle('cw-rotatable', !!transit);
     var hint = transit ? '<div class="cw-rothint">↻ ' + t('cwRotHint') + '</div>' : '';
-    host.innerHTML = buildWheelSVG(sc.chart, transit) + hint + legend + aspNote +
+    host.innerHTML = CW_SVG_OPEN + buildWheelSVG(sc.chart, transit) + '</svg>' + hint + legend + aspNote +
       '<div class="cw-caption">' + cap + '</div>' + cap2;
+  }
+
+  // Redraw the wheel's interior in place (keeps the <svg> node, so an active
+  // pointer capture on it survives — essential for smooth rotation on iOS).
+  function updateWheelLive() {
+    var host = $('chartWheel');
+    if (!host) return;
+    var svg = host.querySelector('svg');
+    if (!svg) { renderChartWheel(); return; }
+    var sc = selectedChart();
+    if (!sc) return;
+    var transit = computeTransit(sc.chart, sc.person);
+    svg.innerHTML = buildWheelSVG(sc.chart, transit);
+    var capT = host.querySelector('.cw-caption-t');
+    if (capT && transit) capT.textContent = t('cwTransitCap') + ': ' + fmtTargetShort(state.targetMs);
   }
 
   // Rotating the wheel scrubs the transit time: one full turn advances by a
   // natural amount for the current granularity (clockwise = forward).
+  var cwDragActive = false;
   var CW_FULL_TURN = {
     minute: 60 * 60000, hour: 24 * 3600000, day: 30 * 86400000,
     month: 365.25 * 86400000, year: 12 * 365.25 * 86400000
@@ -833,35 +859,38 @@
   function setupChartDrag() {
     var host = $('chartWheel');
     if (!host) return;
-    var cxS = 0, cyS = 0, last = 0, dragging = false;
+    var cxS = 0, cyS = 0, last = 0, capSvg = null;
     function ang(e) { return Math.atan2(e.clientY - cyS, e.clientX - cxS); }
     host.addEventListener('pointerdown', function (e) {
       if (state.settings.wheelMode !== 'transit') return;
       var svg = host.querySelector('svg'); if (!svg) return;
       var r = svg.getBoundingClientRect();
       cxS = r.left + r.width / 2; cyS = r.top + r.height / 2;
-      var dist = Math.hypot(e.clientX - cxS, e.clientY - cyS);
-      if (dist > r.width / 2) return;              // ignore taps outside the disc
-      dragging = true; last = ang(e);
+      if (Math.hypot(e.clientX - cxS, e.clientY - cyS) > r.width / 2) return; // outside the disc
+      cwDragActive = true; last = ang(e); capSvg = svg;
       host.classList.add('cw-dragging');
-      try { host.setPointerCapture(e.pointerId); } catch (_) {}
+      // Capture on the SVG itself (it persists through live inner-content swaps).
+      try { svg.setPointerCapture(e.pointerId); } catch (_) {}
       e.preventDefault();
     });
     host.addEventListener('pointermove', function (e) {
-      if (!dragging) return;
+      if (!cwDragActive) return;
       var a = ang(e), d = a - last;
       if (d > Math.PI) d -= 2 * Math.PI; else if (d < -Math.PI) d += 2 * Math.PI;
       last = a;
       var full = CW_FULL_TURN[state.targetUnit] || CW_FULL_TURN.hour;
       state.targetMs += (d * 180 / Math.PI) / 360 * full;   // clockwise → forward
-      renderTargetNumber();                                  // updates readout + schedules the transit redraw
+      renderTargetNumber();      // big readout + picker input (skips full wheel rebuild while dragging)
+      scheduleLiveWheel();       // in-place transit redraw
       e.preventDefault();
     });
-    function end() {
-      if (!dragging) return;
-      dragging = false;
+    function end(e) {
+      if (!cwDragActive) return;
+      cwDragActive = false;
       host.classList.remove('cw-dragging');
-      saveState(); renderTarget();   // recentre the date picker on the new value
+      try { if (capSvg && e) capSvg.releasePointerCapture(e.pointerId); } catch (_) {}
+      capSvg = null;
+      saveState(); renderTarget();   // recentre the date picker + consistent full redraw
     }
     host.addEventListener('pointerup', end);
     host.addEventListener('pointercancel', end);
