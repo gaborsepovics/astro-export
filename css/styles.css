@@ -411,12 +411,8 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 
 /* Text. SVG text is centred on its anchor point. */
 .chart-wheel text { text-anchor: middle; dominant-baseline: central; font-family: var(--sans); }
-.cw-sign   { font-size: 15px; }
-/* Signs coloured strictly by element (four distinct colours, not a rainbow). */
-.cw-fire   { fill: #db5138; }   /* Fire — red */
-.cw-earth  { fill: #3f9256; }   /* Earth — green */
-.cw-air    { fill: #e0aa2e; }   /* Air — yellow/gold */
-.cw-water  { fill: #3f7fca; }   /* Water — blue */
+/* Sign glyphs: a single brass tone (no rainbow). */
+.cw-sign   { font-size: 15px; fill: var(--gold); }
 .cw-axislbl { font-size: 11px; font-weight: 800; fill: var(--accent); letter-spacing: 0.5px; }
 .cw-hnum   { font-size: 9px; fill: var(--ink-soft); opacity: 0.8; }
 .cw-planet { font-size: 15px; fill: var(--ink); }

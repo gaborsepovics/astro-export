@@ -730,7 +730,6 @@
       : { rGlyph: 120, rDeg: 102, tickOuter: R_out, minGap: 13, chipR: 10.5, cls: 'cw-planet', degCls: 'cw-pdeg' };
     var transCfg = { rGlyph: 138, rDeg: 124, tickOuter: R_out, minGap: 10, chipR: 9.5, cls: 'cw-planet cw-planet-t', degCls: 'cw-pdeg cw-pdeg-t' };
 
-    var els = ['fire', 'earth', 'air', 'water'];
     var s = [];
 
     // Zodiac band: calm alternating two-tone sectors (no rainbow). The element
@@ -774,9 +773,10 @@
       s.push(txt(mid, R_hnum, 'cw-hnum', '' + h));
     }
 
-    // Sign glyphs on top, so a cusp spoke never cuts through one.
+    // Sign glyphs on top, so a cusp spoke never cuts through one. A single
+    // brass tone for all of them — no rainbow.
     for (var i3 = 0; i3 < 12; i3++) {
-      s.push(txt(i3 * 30 + 15, R_sign, 'cw-sign cw-' + els[i3 % 4], A.SIGNS[i3].glyph));
+      s.push(txt(i3 * 30 + 15, R_sign, 'cw-sign', A.SIGNS[i3].glyph));
     }
 
     // Collect + spread a ring of planet glyphs from a positions map.
