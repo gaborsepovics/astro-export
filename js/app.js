@@ -39,7 +39,9 @@
       missingCoords: 'Adj meg helyet vagy koordinátákat', born: 'szül.',
       manualPlace: 'vagy add meg kézzel a koordinátákat', generating: 'Számítás…',
       chartTitle: 'Natál chart-kör', chartNeed: 'Adj meg születési adatokat (dátum, hely) a chart-kör megjelenítéséhez.',
-      legHarm: 'harmonikus', legTense: 'feszült', legConj: 'együttállás', legMinor: 'minor'
+      legHarm: 'harmonikus', legTense: 'feszült', legConj: 'együttállás', legMinor: 'minor',
+      cwNatal: 'Natál', cwTransit: 'Natál + Tranzit', cwTransitCap: 'Tranzit',
+      cwAspNatal: 'Aspektusok: natál–natál', cwAspTransit: 'Aspektusok: tranzit → natál (külső gyűrű = tranzit)'
     },
     en: {
       appTitle: 'Astro Export', peopleTitle: 'People', targetTitle: 'Target time',
@@ -69,7 +71,9 @@
       missingCoords: 'Provide a place or coordinates', born: 'born',
       manualPlace: 'or enter coordinates manually', generating: 'Calculating…',
       chartTitle: 'Natal chart wheel', chartNeed: 'Add birth data (date, place) to see the chart wheel.',
-      legHarm: 'harmonious', legTense: 'tense', legConj: 'conjunction', legMinor: 'minor'
+      legHarm: 'harmonious', legTense: 'tense', legConj: 'conjunction', legMinor: 'minor',
+      cwNatal: 'Natal', cwTransit: 'Natal + Transit', cwTransitCap: 'Transit',
+      cwAspNatal: 'Aspects: natal–natal', cwAspTransit: 'Aspects: transit → natal (outer ring = transit)'
     }
   };
   function t(k) { return (I18N[state.settings.lang] || I18N.hu)[k] || k; }
@@ -86,6 +90,7 @@
       settings: {
         lang: 'hu',
         houseSystem: 'placidus',
+        wheelMode: 'natal',
         include: { natal: true, transit: true, progression: true, solararc: true },
         aspects: A.ASPECTS.filter(function (a) { return a.major; }).map(function (a) { return a.key; }),
         orbs: defaultOrbs(),
@@ -359,6 +364,8 @@
     $('targetSub').innerHTML = (isNow ? '<span class="now-flag">' + t('now') + '</span> · ' : '') + t('localTime');
     var mi = $('manualTarget');
     if (mi && document.activeElement !== mi) mi.value = toLocalInput(d);
+    // In bi-wheel mode the transit ring follows the target time.
+    if (state.settings.wheelMode === 'transit') scheduleWheel();
   }
 
   function renderTarget() { renderTargetNumber(); renderWheel(); }
@@ -627,14 +634,20 @@
 
   function pad2n(n) { return (n < 10 ? '0' : '') + n; }
 
-  function buildWheelSVG(chart) {
+  var WHEEL_PKEYS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
+    'Uranus', 'Neptune', 'Pluto', 'NorthNode', 'Chiron', 'Lilith'];
+
+  // Draw the chart. `transit` (optional) turns it into a bi-wheel: natal
+  // planets on the inner ring, transiting planets on an outer ring, and
+  // transit→natal aspect lines through the centre.
+  function buildWheelSVG(chart, transit) {
+    var bi = !!transit;
     var cx = 170, cy = 170, asc = chart.angles.asc;
     // Longitude -> point. ASC sits due-left; longitude increases counter-clockwise.
     function pt(lon, r) {
       var a = (180 - (lon - asc)) * Math.PI / 180;
       return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
     }
-    function xy(lon, r) { var q = pt(lon, r); return q[0].toFixed(2) + ' ' + q[1].toFixed(2); }
     function line(lon1, r1, lon2, r2, cls) {
       var a = pt(lon1, r1), b = pt(lon2, r2);
       return '<line class="' + cls + '" x1="' + a[0].toFixed(2) + '" y1="' + a[1].toFixed(2) +
@@ -645,18 +658,32 @@
       return '<text class="' + cls + '" x="' + q[0].toFixed(2) + '" y="' + q[1].toFixed(2) + '">' + str + '</text>';
     }
 
-    var R_out = 166, R_zin = 140, R_cusp = 104, R_hub = 96;
-    var R_sign = 153, R_planet = 125, R_tickA = 140, R_tickB = 132, R_hnum = 112, R_pdeg = 114;
+    var R_out = 166;
+    var R_zin = bi ? 150 : 140;       // zodiac inner edge
+    var R_sign = bi ? 158 : 153;
+    var R_cuspOut = bi ? 130 : R_zin; // house-cusp band
+    var R_cuspIn = bi ? 108 : 104;
+    var R_hnum = bi ? 119 : 112;
+    var R_hub = bi ? 78 : 96;         // aspect hub
+
+    // Ring configs: where each set of planets and its ticks/labels sit.
+    var natalCfg = bi
+      ? { rGlyph: 96, rDeg: 86, rTickA: 108, rTickB: 104, minGap: 9, cls: 'cw-planet', degCls: 'cw-pdeg' }
+      : { rGlyph: 125, rDeg: 114, rTickA: 140, rTickB: 132, minGap: 8, cls: 'cw-planet', degCls: 'cw-pdeg' };
+    var transCfg = { rGlyph: 139, rDeg: 129, rTickA: 150, rTickB: 145, minGap: 8, cls: 'cw-planet cw-planet-t', degCls: 'cw-pdeg cw-pdeg-t' };
 
     var s = [];
     s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_out + '"/>');
     s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_zin + '"/>');
-    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_cusp + '"/>');
+    if (bi) s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_cuspOut + '"/>');
+    s.push('<circle class="cw-ring" cx="170" cy="170" r="' + R_cuspIn + '"/>');
     s.push('<circle class="cw-ring cw-hub" cx="170" cy="170" r="' + R_hub + '"/>');
 
-    // Degree ticks every 5°, longer on the tens.
+    // Degree ticks every 5°, longer on the tens (shorter in bi-wheel to leave
+    // room for the transit ring).
     for (var dg = 0; dg < 360; dg += 5) {
-      s.push(line(dg, R_zin, dg, R_zin - (dg % 10 === 0 ? 5 : 3), 'cw-tick'));
+      var tl = bi ? (dg % 10 === 0 ? 3 : 2) : (dg % 10 === 0 ? 5 : 3);
+      s.push(line(dg, R_zin, dg, R_zin - tl, 'cw-tick'));
     }
 
     // Zodiac sign sectors: divider every 30° + a glyph, tinted by element.
@@ -671,49 +698,63 @@
     for (var h = 1; h <= 12; h++) {
       var lon = chart.cusps[h];
       var isAxis = axisLbl[h] != null;
-      s.push(line(lon, R_zin, lon, R_cusp, 'cw-cusp' + (isAxis ? ' cw-axis' : '')));
+      s.push(line(lon, R_cuspOut, lon, R_cuspIn, 'cw-cusp' + (isAxis ? ' cw-axis' : '')));
       if (isAxis) s.push(txt(lon, R_out + 11, 'cw-axislbl', axisLbl[h]));
-      // House number at the middle of the sector.
       var b = chart.cusps[h === 12 ? 1 : h + 1];
       var mid = chart.cusps[h] + A.norm360(b - chart.cusps[h]) / 2;
       s.push(txt(mid, R_hnum, 'cw-hnum', '' + h));
     }
 
-    // Planets (+ nodes, Chiron, Lilith). Ticks mark true longitude; glyphs
-    // are spread so labels don't overlap.
-    var pkeys = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn',
-      'Uranus', 'Neptune', 'Pluto', 'NorthNode', 'Chiron', 'Lilith'];
-    var items = [];
-    pkeys.forEach(function (k) {
-      var pos = chart.positions[k];
-      if (pos) items.push({ key: k, lon: pos.lon, retro: pos.retro, glyph: bodyGlyph(k) });
-    });
-    items.sort(function (a, b) { return a.lon - b.lon; });
-    spreadGlyphs(items, 8);
+    // Collect + spread a ring of planet glyphs from a positions map.
+    function ringItems(map, cfg) {
+      var items = [];
+      WHEEL_PKEYS.forEach(function (k) {
+        var pos = map[k];
+        if (pos) items.push({ key: k, lon: pos.lon, retro: pos.retro, glyph: bodyGlyph(k) });
+      });
+      items.sort(function (a, b) { return a.lon - b.lon; });
+      spreadGlyphs(items, cfg.minGap);
+      return items;
+    }
+    function subsetOf(items, map) {
+      var o = {}; items.forEach(function (it) { o[it.key] = map[it.key]; }); return o;
+    }
+    function drawRing(items, cfg) {
+      items.forEach(function (it) {
+        s.push(line(it.lon, cfg.rTickA, it.lon, cfg.rTickB, 'cw-ptick'));
+        if (Math.abs(A.norm180(it.disp - it.lon)) > 1.2) {
+          s.push(line(it.lon, cfg.rTickB, it.disp, cfg.rGlyph + 6, 'cw-pconn'));
+        }
+        var noRetro = it.key === 'NorthNode' || it.key === 'Lilith';
+        s.push(txt(it.disp, cfg.rGlyph, cfg.cls, it.glyph));
+        var dd = A.dms(it.lon);
+        s.push(txt(it.disp, cfg.rDeg, cfg.degCls, pad2n(dd.deg) + '°' + (it.retro && !noRetro ? '<tspan class="cw-r"> ℞</tspan>' : '')));
+      });
+    }
 
-    // Aspect lines among the displayed bodies (respecting the user's toggles/orbs).
-    var subset = {};
-    items.forEach(function (it) { subset[it.key] = chart.positions[it.key]; });
-    var asps = A.findAspects(subset, subset, {
-      aspects: state.settings.aspects, orbs: state.settings.orbs, luminaryBonus: state.settings.luminaryBonus
-    });
-    asps.forEach(function (x) {
-      s.push(line(chart.positions[x.a].lon, R_hub, chart.positions[x.b].lon, R_hub, 'cw-asp ' + aspectClass(x.aspect)));
-    });
+    var natalItems = ringItems(chart.positions, natalCfg);
+    var aspOpts = { aspects: state.settings.aspects, orbs: state.settings.orbs, luminaryBonus: state.settings.luminaryBonus };
 
-    // Planet ticks, connectors and glyphs (drawn last, on top).
-    items.forEach(function (it) {
-      s.push(line(it.lon, R_tickA, it.lon, R_tickB, 'cw-ptick'));
-      if (Math.abs(A.norm180(it.disp - it.lon)) > 1.2) {
-        s.push(line(it.lon, R_tickB, it.disp, R_planet + 7, 'cw-pconn'));
-      }
-      var noRetro = it.key === 'NorthNode' || it.key === 'Lilith';
-      s.push(txt(it.disp, R_planet, 'cw-planet', it.glyph));
-      var dd = A.dms(it.lon);
-      s.push(txt(it.disp, R_pdeg, 'cw-pdeg', pad2n(dd.deg) + '°' + (it.retro && !noRetro ? '<tspan class="cw-r"> ℞</tspan>' : '')));
-    });
+    if (bi) {
+      var transItems = ringItems(transit.positions, transCfg);
+      // Transit → natal aspect lines through the hub.
+      var asps = A.findAspects(subsetOf(transItems, transit.positions), subsetOf(natalItems, chart.positions), aspOpts);
+      asps.forEach(function (x) {
+        s.push(line(transit.positions[x.a].lon, R_hub, chart.positions[x.b].lon, R_hub, 'cw-asp ' + aspectClass(x.aspect)));
+      });
+      drawRing(transItems, transCfg);
+      drawRing(natalItems, natalCfg);
+    } else {
+      var sub = subsetOf(natalItems, chart.positions);
+      var asps2 = A.findAspects(sub, sub, aspOpts);
+      asps2.forEach(function (x) {
+        s.push(line(chart.positions[x.a].lon, R_hub, chart.positions[x.b].lon, R_hub, 'cw-asp ' + aspectClass(x.aspect)));
+      });
+      drawRing(natalItems, natalCfg);
+    }
 
-    return '<svg viewBox="-14 -14 368 368" role="img" aria-label="natal chart wheel">' + s.join('') + '</svg>';
+    return '<svg viewBox="-14 -14 368 368" role="img" aria-label="' +
+      (bi ? 'natal and transit bi-wheel' : 'natal chart wheel') + '">' + s.join('') + '</svg>';
   }
 
   // Coalesce rapid updates (e.g. holding an orb stepper) into one repaint.
@@ -731,14 +772,40 @@
     var p = sc.person;
     var hs = A.HOUSE_SYSTEMS.filter(function (x) { return x.key === state.settings.houseSystem; })[0];
     var hsName = hs ? (state.settings.lang === 'hu' ? hs.hu : hs.en) : state.settings.houseSystem;
+
+    // Bi-wheel: transiting planets for the target time, placed in natal houses.
+    var transit = null;
+    if (state.settings.wheelMode === 'transit') {
+      try {
+        transit = A.computeChart({
+          date: new Date(state.targetMs), lat: p.lat, lon: p.lon,
+          houseSystem: state.settings.houseSystem, withHouses: false, placeInCusps: sc.chart.cusps
+        });
+      } catch (e) { transit = null; }
+    }
+
     var cap = esc([p.name, hsName, [p.birthDate, p.birthTime].filter(Boolean).join(' ')].filter(Boolean).join(' · '));
+    var cap2 = '';
+    if (transit) {
+      cap2 = '<div class="cw-caption cw-caption-t">' + t('cwTransitCap') + ': ' + esc(fmtTargetShort(state.targetMs)) + '</div>';
+    }
+    var aspNote = '<div class="cw-caption">' + t(transit ? 'cwAspTransit' : 'cwAspNatal') + '</div>';
     var legend = '<div class="cw-legend">' +
       '<span class="cw-lg"><i class="cw-a-soft"></i>' + t('legHarm') + '</span>' +
       '<span class="cw-lg"><i class="cw-a-hard"></i>' + t('legTense') + '</span>' +
       '<span class="cw-lg"><i class="cw-a-conj"></i>' + t('legConj') + '</span>' +
       '<span class="cw-lg"><i class="cw-a-minor"></i>' + t('legMinor') + '</span>' +
       '</div>';
-    host.innerHTML = buildWheelSVG(sc.chart) + legend + '<div class="cw-caption">' + cap + '</div>';
+    host.innerHTML = buildWheelSVG(sc.chart, transit) + legend + aspNote +
+      '<div class="cw-caption">' + cap + '</div>' + cap2;
+  }
+
+  // Short local-time label for the transit target (e.g. "2026. aug. 28. 14:30").
+  function fmtTargetShort(ms) {
+    var lang = state.settings.lang;
+    return new Intl.DateTimeFormat(lang === 'hu' ? 'hu-HU' : 'en-GB', {
+      year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).format(new Date(ms));
   }
 
   // ---- Generate ----------------------------------------------------------
@@ -859,6 +926,15 @@
         document.querySelectorAll('#granularity button').forEach(function (x) { x.classList.remove('active'); });
         b.classList.add('active');
         renderWheel();
+      });
+    });
+    document.querySelectorAll('#chartMode button').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-mode') === state.settings.wheelMode);
+      b.addEventListener('click', function () {
+        state.settings.wheelMode = b.getAttribute('data-mode'); saveState();
+        document.querySelectorAll('#chartMode button').forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        renderChartWheel();
       });
     });
     $('houseSystem').addEventListener('change', function (e) { state.settings.houseSystem = e.target.value; saveState(); renderChartWheel(); });

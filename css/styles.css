@@ -395,7 +395,9 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .cw-axislbl { font-size: 11px; font-weight: 800; fill: var(--accent); letter-spacing: 0.5px; }
 .cw-hnum   { font-size: 9px; fill: var(--ink-soft); opacity: 0.8; }
 .cw-planet { font-size: 15px; fill: var(--ink); }
+.cw-planet-t { fill: var(--accent); }   /* transiting planets (outer ring) */
 .cw-pdeg   { font-size: 7.5px; fill: var(--ink-soft); font-family: var(--mono); }
+.cw-pdeg-t { fill: var(--accent); opacity: 0.85; }
 .cw-r      { fill: var(--danger); }
 
 /* Aspect lines. */
@@ -416,3 +418,5 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .cw-lg i.cw-a-conj  { border-color: var(--ink-soft); }
 .cw-lg i.cw-a-minor { border-color: #2e8b57; border-top-style: dashed; }
 .cw-caption { margin-top: 6px; text-align: center; font-size: 12px; color: var(--ink-soft); }
+.cw-caption-t { margin-top: 2px; color: var(--accent); font-weight: 600; }
+#chartMode { margin-bottom: 14px; }
