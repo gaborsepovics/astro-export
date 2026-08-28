@@ -385,13 +385,17 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
   margin-top: 8px; text-align: center; font-size: 12px; color: var(--accent);
   font-weight: 600;
 }
-/* Zodiac band, faintly tinted by element; hub disc. */
+/* Zodiac band: calm alternating two-tone (the element shows in the glyph). */
 .cw-sect        { stroke: none; }
-.cw-sect-fire   { fill: #d1495b; opacity: 0.07; }
-.cw-sect-earth  { fill: #2e8b57; opacity: 0.07; }
-.cw-sect-air    { fill: #c08a1e; opacity: 0.08; }
-.cw-sect-water  { fill: #3a76c4; opacity: 0.07; }
+.cw-sect-a      { fill: var(--ink); opacity: 0.05; }
+.cw-sect-b      { fill: var(--ink); opacity: 0.015; }
 .cw-hubfill     { fill: var(--surface); opacity: 0.45; stroke: none; }
+
+/* Centre globe — engraved duotone, drawn in the accent colour. */
+.cw-globe-base  { fill: var(--surface-2); }
+.cw-globe-land  { fill: var(--accent); opacity: 0.20; }
+.cw-grat        { fill: none; stroke: var(--accent); stroke-width: 0.8; opacity: 0.35; }
+.cw-globe-rim   { stroke: var(--accent); stroke-width: 1.6; opacity: 0.85; }
 
 /* Structural rings and ticks. */
 .cw-ring    { fill: none; stroke: var(--line); stroke-width: 1; }
@@ -403,23 +407,23 @@ textarea#aiQuestion { resize: vertical; min-height: 64px; line-height: 1.4; }
 .cw-signdiv { stroke: var(--line); stroke-width: 1; }
 .cw-cusp    { stroke: var(--ink-soft); stroke-width: 0.7; opacity: 0.55; }
 .cw-cusp.cw-axis { stroke: var(--accent); stroke-width: 1.6; opacity: 0.95; }
-.cw-ptick   { stroke: var(--ink); stroke-width: 1.2; }
-.cw-pconn   { stroke: var(--ink-soft); stroke-width: 0.6; opacity: 0.6; }
+.cw-ptick   { stroke: var(--ink-soft); stroke-width: 0.6; opacity: 0.5; }
 
 /* Text. SVG text is centred on its anchor point. */
 .chart-wheel text { text-anchor: middle; dominant-baseline: central; font-family: var(--sans); }
 .cw-sign   { font-size: 15px; }
-.cw-fire   { fill: #d1495b; }
-.cw-earth  { fill: #2e8b57; }
-.cw-air    { fill: #c08a1e; }
-.cw-water  { fill: #3a76c4; }
+/* Signs coloured strictly by element (four distinct colours, not a rainbow). */
+.cw-fire   { fill: #db5138; }   /* Fire — red */
+.cw-earth  { fill: #3f9256; }   /* Earth — green */
+.cw-air    { fill: #e0aa2e; }   /* Air — yellow/gold */
+.cw-water  { fill: #3f7fca; }   /* Water — blue */
 .cw-axislbl { font-size: 11px; font-weight: 800; fill: var(--accent); letter-spacing: 0.5px; }
 .cw-hnum   { font-size: 9px; fill: var(--ink-soft); opacity: 0.8; }
 .cw-planet { font-size: 15px; fill: var(--ink); }
 .cw-planet-t { fill: var(--accent); }   /* transiting planets (outer ring) */
-.cw-pdeg   { font-size: 7.5px; fill: var(--ink-soft); font-family: var(--mono); }
+.cw-pdeg   { font-size: 6.5px; fill: var(--ink-soft); font-family: var(--mono); }
 .cw-pdeg-t { fill: var(--accent); opacity: 0.85; }
-.cw-r      { fill: var(--danger); }
+.cw-r      { fill: var(--danger); font-size: 7px; font-weight: 700; }
 
 /* Aspect lines. */
 .cw-asp        { fill: none; }
