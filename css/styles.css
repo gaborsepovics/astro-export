@@ -123,6 +123,9 @@ header.top h1 .glyph { color: var(--gold); font-size: 22px; }
   align-items: center; justify-content: center; color: var(--accent);
   font-weight: 700; border: 1.5px dashed var(--line); min-width: 56px;
 }
+.person-chip.sky { background: transparent; border: 1.5px solid var(--line); }
+.person-chip.sky .name { color: var(--accent); }
+.person-chip.sky.selected { border-color: var(--accent); background: var(--surface-2); }
 
 /* Forms */
 .field { margin-bottom: 12px; }

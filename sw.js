@@ -1,15 +1,15 @@
 /* Astro Export service worker — network-first so updates always propagate,
    with a cache fallback for offline use. */
-var CACHE = 'astro-export-v3';
+var CACHE = 'astro-export-v4';
 var ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=8',
+  './css/styles.css?v=9',
   './js/astronomy.browser.min.js',
   './js/cities.js',
   './js/chiron.js',
-  './js/astro.js?v=8',
-  './js/app.js?v=8',
+  './js/astro.js?v=9',
+  './js/app.js?v=9',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
