@@ -42,7 +42,11 @@
       legHarm: 'harmonikus', legTense: 'feszült', legConj: 'együttállás', legMinor: 'minor',
       cwNatal: 'Natál', cwTransit: 'Natál + Tranzit', cwTransitCap: 'Tranzit',
       cwAspNatal: 'Aspektusok: natál–natál', cwAspTransit: 'Aspektusok: tranzit → natál (külső gyűrű = tranzit)',
-      cwRotHint: 'Forgasd a kört a tranzit idő állításához (a lépték a Cél időpontnál választható)'
+      cwRotHint: 'Forgasd a kört a tranzit idő állításához (a lépték a Cél időpontnál választható)',
+      skyChip: 'Aktuális égbolt', skyChipSub: 'nincs személy',
+      skyName: 'Aktuális égbolt',
+      skyLocation: 'Helyszín (a házakhoz)',
+      skyLocHint: 'Nincs személy kiválasztva — a cél-időpont égboltját exportálja. A bolygók helyszíntől függetlenek; a házakhoz/AC-MC-hez add meg a helyet.'
     },
     en: {
       appTitle: 'Astro Export', peopleTitle: 'People', targetTitle: 'Target time',
@@ -75,7 +79,11 @@
       legHarm: 'harmonious', legTense: 'tense', legConj: 'conjunction', legMinor: 'minor',
       cwNatal: 'Natal', cwTransit: 'Natal + Transit', cwTransitCap: 'Transit',
       cwAspNatal: 'Aspects: natal–natal', cwAspTransit: 'Aspects: transit → natal (outer ring = transit)',
-      cwRotHint: 'Rotate the wheel to scrub the transit time (step set under Target time)'
+      cwRotHint: 'Rotate the wheel to scrub the transit time (step set under Target time)',
+      skyChip: 'Current sky', skyChipSub: 'no person',
+      skyName: 'Current sky',
+      skyLocation: 'Location (for the houses)',
+      skyLocHint: 'No person selected — exports the sky for the target time. Planets are location-independent; set a place for the houses / AC-MC.'
     }
   };
   function t(k) { return (I18N[state.settings.lang] || I18N.hu)[k] || k; }
@@ -87,6 +95,8 @@
     return {
       people: [],
       selectedPersonId: null,
+      // Location used when no person is selected ("current sky" export).
+      transitPlace: { placeName: 'Budapest', lat: 47.4979, lon: 19.0402, tz: 'Europe/Budapest' },
       targetMs: Date.now(),
       targetUnit: 'hour',
       settings: {
@@ -120,6 +130,7 @@
       if (!s.settings.orbs) s.settings.orbs = d.settings.orbs;
       if (s.settings.luminaryBonus == null) s.settings.luminaryBonus = d.settings.luminaryBonus;
       if (!s.people) s.people = [];
+      if (!s.transitPlace) s.transitPlace = d.transitPlace;
       return s;
     } catch (e) { return defaultState(); }
   }
@@ -130,7 +141,11 @@
 
   function uid() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
+  var NO_PERSON = 'none';   // sentinel: export the current sky, not a person
+  function isNoPerson() { return state.selectedPersonId === NO_PERSON; }
+
   function selectedPerson() {
+    if (isNoPerson()) return null;
     return state.people.find(function (p) { return p.id === state.selectedPersonId; })
       || state.people.find(function (p) { return p.isDefault; })
       || state.people[0] || null;
@@ -156,15 +171,30 @@
   function renderPeople() {
     var row = $('peopleRow');
     row.innerHTML = '';
+
+    // "Current sky" chip — selecting it means no person (transit-only export).
+    var sky = document.createElement('div');
+    sky.className = 'person-chip sky' + (isNoPerson() ? ' selected' : '');
+    sky.innerHTML = '<span class="name">✷ ' + esc(t('skyChip')) + '</span>' +
+      '<span class="sub">' + esc(t('skyChipSub')) + '</span>';
+    sky.addEventListener('click', function () {
+      state.selectedPersonId = NO_PERSON; saveState();
+      renderPeople(); renderPersonSummary(); renderChartWheel();
+    });
+    row.appendChild(sky);
+
+    var selId = selectedPerson() && selectedPerson().id;
     state.people.forEach(function (p) {
       var el = document.createElement('div');
-      el.className = 'person-chip' + (p.id === (selectedPerson() && selectedPerson().id) ? ' selected' : '');
+      el.className = 'person-chip' + (p.id === selId ? ' selected' : '');
       var sub = p.birthDate ? (t('born') + ' ' + p.birthDate) : '';
       el.innerHTML = '<span class="name">' + esc(p.name) + '</span>' +
         (p.isDefault ? '<span class="default-tag">' + t('defaultTag') + '</span>' : '') +
         '<span class="sub">' + esc(sub) + '</span>';
       el.addEventListener('click', function () {
-        state.selectedPersonId = p.id; saveState(); renderPeople(); renderPersonSummary(); renderChartWheel();
+        // Toggle: tapping the selected person deselects to "current sky".
+        state.selectedPersonId = (p.id === selId) ? NO_PERSON : p.id;
+        saveState(); renderPeople(); renderPersonSummary(); renderChartWheel();
       });
       row.appendChild(el);
     });
@@ -177,6 +207,7 @@
 
   function renderPersonSummary() {
     var host = $('personSummary');
+    if (isNoPerson()) { renderSkyLocation(host); return; }
     var p = selectedPerson();
     if (!p) { host.innerHTML = '<div class="empty">' + t('needPerson') + '</div>'; return; }
     var place = p.placeName || (p.lat != null ? p.lat.toFixed(3) + ', ' + p.lon.toFixed(3) : '—');
@@ -187,6 +218,39 @@
         '<button class="btn ghost small" id="editPersonBtn">✎</button>' +
       '</div>';
     $('editPersonBtn').addEventListener('click', function () { openPersonModal(p.id); });
+  }
+
+  // "Current sky" mode: pick the location used for the transit chart/export.
+  function renderSkyLocation(host) {
+    var pl = state.transitPlace || {};
+    host.innerHTML =
+      '<div class="hint" style="margin-bottom:8px;">' + esc(t('skyLocHint')) + '</div>' +
+      '<div class="field autocomplete" style="margin-bottom:0;">' +
+        '<label>' + esc(t('skyLocation')) + '</label>' +
+        '<input id="skyPlace" autocomplete="off" placeholder="' + esc(t('searchCity')) + '" value="' + esc(pl.placeName || '') + '">' +
+        '<div class="ac-list" id="skyAcList" style="display:none;"></div>' +
+      '</div>' +
+      '<div class="hint" style="margin-top:6px;">' + esc(t('coords')) + ': ' +
+        (pl.lat != null ? pl.lat.toFixed(3) + ', ' + pl.lon.toFixed(3) : '—') +
+        (pl.tz ? ' · ' + esc(pl.tz) : '') + '</div>';
+    var input = $('skyPlace');
+    input.addEventListener('input', function () {
+      var list = $('skyAcList');
+      var res = CityDB.search(input.value, 8);
+      if (!res.length) { list.style.display = 'none'; return; }
+      list.innerHTML = '';
+      res.forEach(function (c) {
+        var it = document.createElement('div'); it.className = 'ac-item';
+        it.innerHTML = '<span>' + esc(c.name) + '</span><span class="c">' + esc(c.country) + '</span>';
+        it.addEventListener('click', function () {
+          state.transitPlace = { placeName: c.name, lat: c.lat, lon: c.lon, tz: c.tz };
+          saveState(); list.style.display = 'none';
+          renderPersonSummary(); renderChartWheel();
+        });
+        list.appendChild(it);
+      });
+      list.style.display = 'block';
+    });
   }
 
   function renderHouseSystems() {
@@ -369,7 +433,7 @@
     // In bi-wheel mode the transit ring follows the target time. During an
     // active rotation drag the wheel is updated in place instead (see the drag
     // handler), so skip the full rebuild here.
-    if (state.settings.wheelMode === 'transit' && !cwDragActive) scheduleWheel();
+    if (wheelScrubbable() && !cwDragActive) scheduleWheel();
   }
 
   function renderTarget() { renderTargetNumber(); renderWheel(); }
@@ -591,8 +655,19 @@
     return '?';
   }
 
-  // Compute the natal chart for the selected person, or null if data missing.
+  // Compute the chart to draw: the selected person's natal chart, or — when no
+  // person is selected — the "current sky" for the target time at the chosen
+  // transit location. Returns null if the needed data is missing.
   function selectedChart() {
+    if (isNoPerson()) {
+      var pl = state.transitPlace;
+      if (!pl || pl.lat == null || pl.lon == null) return null;
+      try {
+        var sky = A.computeChart({ date: new Date(state.targetMs), lat: pl.lat, lon: pl.lon, houseSystem: state.settings.houseSystem });
+        if (!sky.cusps || !sky.angles) return null;
+        return { chart: sky, sky: true, place: pl };
+      } catch (e) { return null; }
+    }
     var p = selectedPerson();
     if (!p || p.lat == null || p.lon == null || !p.birthDate) return null;
     var dp = p.birthDate.split('-');
@@ -857,6 +932,9 @@
     _liveRaf = requestAnimationFrame(function () { _liveRaf = 0; updateWheelLive(); });
   }
 
+  // The wheel follows the target time when showing transits or the sky.
+  function wheelScrubbable() { return isNoPerson() || state.settings.wheelMode === 'transit'; }
+
   // Transiting planets for the target time, placed in the natal houses.
   function computeTransit(natalChart, p) {
     if (state.settings.wheelMode !== 'transit') return null;
@@ -876,20 +954,29 @@
     var p = sc.person;
     var hs = A.HOUSE_SYSTEMS.filter(function (x) { return x.key === state.settings.houseSystem; })[0];
     var hsName = hs ? (state.settings.lang === 'hu' ? hs.hu : hs.en) : state.settings.houseSystem;
-    var transit = computeTransit(sc.chart, p);
+    var sky = !!sc.sky;
+    // The mode toggle (natal / bi-wheel) only applies to a person.
+    var cm = $('chartMode'); if (cm) cm.style.display = sky ? 'none' : '';
+    var transit = sky ? null : computeTransit(sc.chart, p);
+    var scrubbable = sky || !!transit;   // wheel follows the target time
 
-    var cap = esc([p.name, hsName, [p.birthDate, p.birthTime].filter(Boolean).join(' ')].filter(Boolean).join(' · '));
-    var cap2 = transit
-      ? '<div class="cw-caption cw-caption-t">' + t('cwTransitCap') + ': ' + esc(fmtTargetShort(state.targetMs)) + '</div>' : '';
-    var aspNote = '<div class="cw-caption">' + t(transit ? 'cwAspTransit' : 'cwAspNatal') + '</div>';
+    var cap, cap2;
+    if (sky) {
+      cap = esc([t('skyName'), hsName, sc.place.placeName].filter(Boolean).join(' · '));
+      cap2 = '<div class="cw-caption cw-caption-t">' + t('cwTransitCap') + ': ' + esc(fmtTargetShort(state.targetMs)) + '</div>';
+    } else {
+      cap = esc([p.name, hsName, [p.birthDate, p.birthTime].filter(Boolean).join(' ')].filter(Boolean).join(' · '));
+      cap2 = transit ? '<div class="cw-caption cw-caption-t">' + t('cwTransitCap') + ': ' + esc(fmtTargetShort(state.targetMs)) + '</div>' : '';
+    }
+    var aspNote = '<div class="cw-caption">' + t((transit && !sky) ? 'cwAspTransit' : 'cwAspNatal') + '</div>';
     var legend = '<div class="cw-legend">' +
       '<span class="cw-lg"><i class="cw-a-soft"></i>' + t('legHarm') + '</span>' +
       '<span class="cw-lg"><i class="cw-a-hard"></i>' + t('legTense') + '</span>' +
       '<span class="cw-lg"><i class="cw-a-conj"></i>' + t('legConj') + '</span>' +
       '<span class="cw-lg"><i class="cw-a-minor"></i>' + t('legMinor') + '</span>' +
       '</div>';
-    host.classList.toggle('cw-rotatable', !!transit);
-    var hint = transit ? '<div class="cw-rothint">↻ ' + t('cwRotHint') + '</div>' : '';
+    host.classList.toggle('cw-rotatable', scrubbable);
+    var hint = scrubbable ? '<div class="cw-rothint">↻ ' + t('cwRotHint') + '</div>' : '';
     host.innerHTML = CW_SVG_OPEN + buildWheelSVG(sc.chart, transit) + '</svg>' + hint + legend + aspNote +
       '<div class="cw-caption">' + cap + '</div>' + cap2;
   }
@@ -903,10 +990,10 @@
     if (!svg) { renderChartWheel(); return; }
     var sc = selectedChart();
     if (!sc) return;
-    var transit = computeTransit(sc.chart, sc.person);
+    var transit = sc.sky ? null : computeTransit(sc.chart, sc.person);
     svg.innerHTML = buildWheelSVG(sc.chart, transit);
     var capT = host.querySelector('.cw-caption-t');
-    if (capT && transit) capT.textContent = t('cwTransitCap') + ': ' + fmtTargetShort(state.targetMs);
+    if (capT) capT.textContent = t('cwTransitCap') + ': ' + fmtTargetShort(state.targetMs);
   }
 
   // Rotating the wheel scrubs the transit time: one full turn advances by a
@@ -922,7 +1009,7 @@
     var cxS = 0, cyS = 0, last = 0, capSvg = null;
     function ang(e) { return Math.atan2(e.clientY - cyS, e.clientX - cxS); }
     host.addEventListener('pointerdown', function (e) {
-      if (state.settings.wheelMode !== 'transit') return;
+      if (!wheelScrubbable()) return;
       var svg = host.querySelector('svg'); if (!svg) return;
       var r = svg.getBoundingClientRect();
       cxS = r.left + r.width / 2; cyS = r.top + r.height / 2;
@@ -969,6 +1056,22 @@
   // Build the export text for the current person + target + settings.
   // Returns the text, or null (with a toast) if inputs are missing.
   function currentExportText() {
+    // No person selected → "current sky" export for the target time + location.
+    if (isNoPerson()) {
+      var pl = state.transitPlace;
+      if (!pl || pl.lat == null || pl.lon == null) { toast(t('missingCoords')); return null; }
+      var skyCfg = {
+        place: { name: pl.placeName, lat: pl.lat, lon: pl.lon, tzName: pl.tz },
+        target: { utc: new Date(state.targetMs), label: Math.abs(state.targetMs - Date.now()) < 60000 ? t('now') : '' },
+        houseSystem: state.settings.houseSystem,
+        lang: state.settings.lang,
+        aspects: state.settings.aspects,
+        orbs: state.settings.orbs,
+        luminaryBonus: state.settings.luminaryBonus
+      };
+      try { return A.buildSkyExport(skyCfg); }
+      catch (e) { toast('Error: ' + e.message); console.error(e); return null; }
+    }
     var p = selectedPerson();
     if (!p) { toast(t('needPerson')); return null; }
     if (p.lat == null || p.lon == null) { toast(t('missingCoords')); openPersonModal(p.id); return null; }
